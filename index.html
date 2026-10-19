@@ -810,7 +810,7 @@ function save(){clearTimeout(saveT);saveT=setTimeout(()=>{saving=saving.then(asy
  try{if(IDB.db){await IDB.set('store',store);Cloud.schedule();return}localStorage.setItem(KEY,JSON.stringify(store))}
  catch(e){toast('Не удалось сохранить: в браузере закончилось место. Скачай колоды через «Экспорт JSON» и удали лишние.')}})},300)}
 async function storageInfo(){try{const e=await navigator.storage.estimate();return{used:e.usage||0,quota:e.quota||0}}catch(e){return null}}
-const mb=n=>(n/1048576).toFixed(n<10485760?1:0).replace('.',',')+' МБ';
+const mb=n=>{const u=[['ТБ',2**40],['ГБ',2**30],['МБ',2**20]];for(const [l,v] of u)if(n>=v||l==='МБ'){const x=n/v;return (x<10?x.toFixed(1):Math.round(x)).toString().replace('.',',')+' '+l}};
 
 let section=null, openItem=null;
 const $=s=>document.querySelector(s);
@@ -975,7 +975,8 @@ function renderSide(){
    <div class="btns"><button class="btn" data-act="import">Импорт JSON</button><button class="btn" data-act="sample">Пример (Хищник)</button></div>
    ${canSave()?'<button class="btn" data-act="dlall">Скачать все колоды (резервная копия)</button>':''}
    <p class="hint">Нажми на колоду справа, чтобы открыть её и редактировать. Удаление спрашивает подтверждение.</p>
-   <div class="stat" id="stinfo"><span>Колод: ${Object.keys(store.decks).length}<br><small style="color:var(--muted)">Место в браузере</small></span><b style="font-size:14px">…</b></div></div>`;
+   <div class="stat" id="stinfo"><span>Колод: ${Object.keys(store.decks).length}<br><small style="color:var(--muted)">Занято на этом устройстве</small></span><b style="font-size:14px">…</b></div>
+   ${Cloud.state.space?`<div class="stat ok"><span>Яндекс Диск<br><small style="color:var(--muted)">Свободно ${mb(Cloud.state.space[1]-Cloud.state.space[0])} из ${mb(Cloud.state.space[1])}</small></span><b>☁</b></div>`:''}</div>`;
   storageInfo().then(i=>{const el=document.getElementById('stinfo');if(!el)return;const b=el.querySelector('b');b.textContent=i&&i.quota?`${mb(i.used)} из ${mb(i.quota)}`:(storageMode==='ls'?'до 5 МБ':'—')})}
  if(section==='main'){
   const list=Object.values(store.decks);
