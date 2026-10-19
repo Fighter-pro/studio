@@ -1,1 +1,1 @@
-window.YA_CLIENT_ID = "153b41cea3364147af4059c38be4bf2e";
+window.YA_CLIENT_ID = "e24da7c38d624b8da7a2d1256c198634";
