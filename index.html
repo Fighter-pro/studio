@@ -3657,12 +3657,12 @@ const Cloud=(()=>{
   return r}
  async function ok(r,what){if(r.ok)return r;let m='';try{m=(await r.json()).message||''}catch(e){}throw Object.assign(new Error(what+' ('+r.status+(m?': '+m:'')+')'),{status:r.status})}
  const P=p=>`/repos/${repo()}/contents/${p.split('/').map(encodeURIComponent).join('/')}`;
- async function tree(){const r=await gh('GET',`/repos/${repo()}/git/trees/HEAD?recursive=1`);if(r.status===409)return[];
+ async function tree(){const r=await gh('GET',`/repos/${repo()}/git/trees/HEAD?recursive=1`);if(r.status===409)return[];if(r.status===404)throw Object.assign(new Error('repo'),{status:404,repo404:true});
   await ok(r,'Не удалось прочитать репозиторий');return((await r.json()).tree||[]).filter(x=>x.type==='blob')}
  const b64utf8=s=>{const u=new TextEncoder().encode(s);let o='';for(let i=0;i<u.length;i+=32768)o+=String.fromCharCode(...u.subarray(i,i+32768));return btoa(o)};
  async function putFile(path,b64,sha,msg){for(let i=0;;i++){const r=await gh('PUT',P(path),{message:msg,content:b64,...(sha?{sha}:{})});
   if(r.status===409&&!sha&&i<3){await new Promise(z=>setTimeout(z,900*(i+1)));continue}
-  if(r.status===422&&!sha&&path.startsWith('images/'))return null;
+  if(r.status===422&&!sha&&path.startsWith('images/')&&await remoteSha(path))return null;
   await ok(r,'Не удалось сохранить');return(await r.json()).content.sha}}
  async function rawText(path){const r=await gh('GET',P(path),null,'application/vnd.github.raw+json');await ok(r,'Не удалось скачать');return r.text()}
  async function rawDataURL(path,mime){const r=await gh('GET',P(path),null,'application/vnd.github.raw+json');await ok(r,'Не удалось скачать картинку');const b=await r.blob();
@@ -3679,7 +3679,7 @@ const Cloud=(()=>{
    try{await IDB.set('img:'+im.name,v)}catch(e){}o[k]='gh:'+im.name}
   return c}
  async function fromRemote(c){for(const [o,k] of IMG_KEYS(c)){const v=o[k];if(!v||!v.startsWith('gh:'))continue;const n=v.slice(3);
-   let du=null;try{du=await IDB.get('img:'+n)}catch(e){}if(!du){du=await rawDataURL('images/'+n,mimeOf(n));try{await IDB.set('img:'+n,du)}catch(e){}}o[k]=du}
+   let du=null;try{du=await IDB.get('img:'+n)}catch(e){}if(!du){try{du=await rawDataURL('images/'+n,mimeOf(n));try{await IDB.set('img:'+n,du)}catch(e){}}catch(e){if(e.status!==404)throw e;du=''}}o[k]=du}
   return c}
  async function loadMeta(){try{st.synced=(IDB.db&&await IDB.get('ghsync'))||{}}catch(e){st.synced={}}}
  async function saveMeta(){try{IDB.db&&await IDB.set('ghsync',st.synced)}catch(e){}}
@@ -3688,9 +3688,9 @@ const Cloud=(()=>{
  async function push(L,have,sha,s){
   try{return{sha:await upload(L,have,sha)}}catch(e){if(e.status!==409&&e.status!==422)throw e}
   const cur=await remoteSha(`decks/${L.id}.json`);if(!cur)return{sha:await upload(L,have,null)};
-  const d=await download(L.id);if(s&&hashDeck(d)!==s.hash&&!sameDeck(d,L))return{conflict:d,sha:cur};
+  const d=await download(L.id);if(d&&s&&hashDeck(d)!==s.hash&&!sameDeck(d,L))return{conflict:d,sha:cur};
   return{sha:await upload(L,have,cur)}}
- async function download(id){const c=JSON.parse(await rawText(`decks/${id}.json`));c.id=id;return fromRemote(c)}
+ async function download(id){let t;try{t=await rawText(`decks/${id}.json`)}catch(e){if(e.status===404)return null;throw e}const c=JSON.parse(t);c.id=id;return fromRemote(c)}
  async function run(){
   if(!repo()){set('off');return}if(!token()){set('login');return}
   if(st.busy){st.again=true;return}st.busy=true;set('sync');let changed=false;
@@ -3707,12 +3707,13 @@ const Cloud=(()=>{
     if(L){const h=hashDeck(L),dirty=!s||s.hash!==h,fresh=s&&s.t&&Date.now()-s.t<180000,rch=rm&&(!s||s.sha!==rm)&&!fresh;
      if(!rm){ if(s&&!dirty&&!fresh){delete store.decks[id];delete S[id];changed=true} else if(dirty){const p=await push(L,have,s&&s.sha,s);if(p.conflict){await keepBoth(L,p.conflict,p.sha);changed=true}else S[id]={hash:h,sha:p.sha,t:Date.now()}} }
      else if(dirty&&!rch){const p=await push(L,have,fresh?s.sha:rm,s);if(p.conflict){await keepBoth(L,p.conflict,p.sha);changed=true}else S[id]={hash:h,sha:p.sha,t:Date.now()}}
-     else if(!dirty&&rch){const d=await download(id);store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true}
+     else if(!dirty&&rch){const d=await download(id);if(d){store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true}}
      else if(dirty&&rch){const d=await download(id);
-      if(sameDeck(L,d)){store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true}
+      if(!d){const p=await push(L,have,null,null);S[id]={hash:h,sha:p.sha,t:Date.now()}}
+      else if(sameDeck(L,d)){store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true}
       else{await keepBoth(L,d,rm);changed=true}}
     }else if(rm){ if(s&&s.sha===rm){let r=await gh('DELETE',P(`decks/${id}.json`),{message:'Удалена колода',sha:rm});if(r.status===409||r.status===422){const cur=await remoteSha(`decks/${id}.json`);r=cur?await gh('DELETE',P(`decks/${id}.json`),{message:'Удалена колода',sha:cur}):{ok:true}}if(!r.ok&&r.status!==404)await ok(r,'Не удалось удалить');delete S[id]}
-     else {const d=await download(id);store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true} }
+     else {const d=await download(id);if(d){store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true}else delete S[id]} }
     else delete S[id];
    }
    if(!Object.keys(store.decks).length){const d=blankDeck();store.decks[d.id]=d}
@@ -3720,7 +3721,7 @@ const Cloud=(()=>{
    await saveMeta();
    if(changed){await IDB.set('store',store).catch(()=>{});const typing=document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);if(!typing)render();else renderBench()}
    st.last=Date.now();set('ok');
-  }catch(e){console.error(e);if(e.auth)set('login');else if(e.net)set('offline');else set('err',e.status===404?'Репозиторий не найден — проверь GH_REPO и доступ ключа':e.status===403?'Ключу не хватает прав на запись':'Ошибка облака'+(e.status?' ('+e.status+')':''))}
+  }catch(e){console.error(e);if(e.auth)set('login');else if(e.net)set('offline');else set('err',e.repo404?'Репозиторий не найден — проверь GH_REPO и доступ ключа':e.status===404?'Файл в облаке не найден — нажми «Синхронизировать сейчас»':e.status===403?'Ключу не хватает прав на запись':'Ошибка облака'+(e.status?' ('+e.status+')':''))}
   finally{st.busy=false;if(st.again){st.again=false;setTimeout(run,500)}}
  }
  let t;const schedule=()=>{if(!token()||!repo())return;clearTimeout(t);t=setTimeout(run,3000)};
