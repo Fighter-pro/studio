@@ -808,7 +808,7 @@ async function loadStore(){
 }
 function save(){clearTimeout(saveT);saveT=setTimeout(()=>{saving=saving.then(async()=>{
  try{if(IDB.db){await IDB.set('store',store);Cloud.schedule();return}localStorage.setItem(KEY,JSON.stringify(store))}
- catch(e){toast('Не удалось сохранить: в браузере закончилось место. Скачай колоды через «Экспорт JSON» и удали лишние.')}})},300)}
+ catch(e){Cloud.schedule();toast(Cloud.state.status==='ok'?'Память браузера заполнена: изменения сохраняются только на Яндекс Диск. Удали лишние колоды на этом устройстве.':'Не удалось сохранить: в браузере закончилось место. Скачай колоды через «Экспорт JSON» и удали лишние.')}})},300)}
 async function storageInfo(){try{const e=await navigator.storage.estimate();return{used:e.usage||0,quota:e.quota||0}}catch(e){return null}}
 const mb=n=>{const u=[['ТБ',2**40],['ГБ',2**30],['МБ',2**20]];for(const [l,v] of u)if(n>=v||l==='МБ'){const x=n/v;return (x<10?x.toFixed(1):Math.round(x)).toString().replace('.',',')+' '+l}};
 
