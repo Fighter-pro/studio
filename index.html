@@ -1094,6 +1094,9 @@ document.addEventListener('click',async e=>{
  if(a==='export'){const j=JSON.stringify(deck);const local=canSave();modal(`<h2 class="sec">Экспорт колоды</h2><p class="hint">${local?'Скачай колоду файлом .json — так она не потеряется, даже если очистить браузер.':'Скопируй текст и сохрани в файл .json — потом его можно импортировать на любом устройстве.'}</p><textarea id="exporttext" readonly>${esc(j)}</textarea><div class="btns">${local?'<button class="btn primary" data-act="dl">Скачать файл колоды</button><button class="btn" data-act="dlall">Скачать все колоды</button>':''}<button class="btn${local?'':' primary'}" data-act="copy">Копировать</button><button class="btn" data-act="close">Закрыть</button></div>`);return}
  if(a==='pdf')return makePdf(t);
  if(a==='ya-login')return Cloud.login();
+ if(a==='ya-unlock')return Cloud.unlock(($('#ya-pw')||{}).value);
+ if(a==='ya-lock')return Cloud.makeLock(($('#ya-np1')||{}).value,($('#ya-np2')||{}).value);
+ if(a==='ya-connect')return Cloud.connect(($('#ya-key')||{}).value);
  if(a==='ya-logout')return Cloud.logout();
  if(a==='ya-sync')return Cloud.run();
  if(a==='savepng'){if(lastPng)saveFile(t.dataset.name,lastPng);return}
@@ -1125,7 +1128,7 @@ const Cloud=(()=>{
  function set(status,msg){st.status=status;st.msg=msg||'';paint()}
  function paint(){document.querySelectorAll('[data-cloud-chip]').forEach(el=>{el.innerHTML=chip()});if(section==='cloud'&&!document.activeElement?.closest?.('#side'))renderSide()}
  function chip(){if(!available())return'';const t=new Date(st.last).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
-  const m={off:['Облако выключено','muted'],login:['Войди через Яндекс','warn'],sync:['Синхронизирую…','muted'],ok:[`Сохранено на Диске · ${t}`,'ok'],err:[st.msg||'Ошибка облака','bad'],offline:['Нет связи — сохранено на устройстве','warn']}[st.status]||['','muted'];
+  const m={off:['Облако выключено','muted'],login:['Подключи Яндекс Диск','warn'],sync:['Синхронизирую…','muted'],ok:[`Сохранено на Диске · ${t}`,'ok'],err:[st.msg||'Ошибка облака','bad'],offline:['Нет связи — сохранено на устройстве','warn']}[st.status]||['','muted'];
   return `<button class="cchip ${m[1]}" data-sec="cloud">☁ ${esc(m[0])}</button>`}
  async function api(method,path,params={}){
   const u=new URL(API+path);for(const k in params)u.searchParams.set(k,params[k]);
@@ -1182,6 +1185,32 @@ const Cloud=(()=>{
   finally{st.busy=false;if(st.again){st.again=false;setTimeout(run,500)}}
  }
  let t;const schedule=()=>{if(!token())return;clearTimeout(t);t=setTimeout(run,3000)};
+ const manual=()=>window.YA_REDIRECT!==true;
+ const keyUrl=()=>`https://oauth.yandex.ru/authorize?response_type=token&client_id=${encodeURIComponent(clientId())}&force_confirm=yes`;
+ function parseKey(v){v=String(v||'').trim();const m=/access_token=([^&\s#]+)/.exec(v);if(m)return m[1];return v.replace(/^OAuth\s+/i,'').replace(/\s+/g,'')}
+ async function connect(raw){
+  const tk=parseKey(raw);if(!tk||tk.length<20)return toast('Это не похоже на ключ. Скопируй всю строку со страницы Яндекса.');
+  ls.set(TK,tk);ls.set(TX,null);set('sync');
+  try{await list()}catch(e){ls.set(TK,null);set('login');return toast(e.auth||e.status===403?'Яндекс не принял ключ. Получи новый и вставь его целиком.':e.net?'Нет связи с Яндексом. Проверь интернет.':'Ошибка проверки ключа'+(e.status?' ('+e.status+')':''))}
+  st.synced={};await saveMeta();toast('Подключено! Колоды синхронизируются с Яндекс Диском');who();await run();startTimers();renderSide()}
+ // key locked with a password, stored publicly in config.js (window.YA_LOCKED)
+ const b64=u=>btoa(String.fromCharCode(...u)),unb64=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
+ async function kdf(pw,salt){const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:250000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+ async function lockKey(tk,pw){const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},await kdf(pw,salt),new TextEncoder().encode(tk)));
+  const out=new Uint8Array(28+ct.length);out.set(salt);out.set(iv,16);out.set(ct,28);return b64(out)}
+ async function unlockKey(blob,pw){const a=unb64(blob);const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:a.slice(16,28)},await kdf(pw,a.slice(0,16)),a.slice(28));return new TextDecoder().decode(pt)}
+ const locked=()=>(window.YA_LOCKED||'').trim();
+ async function unlock(pw){if(!pw)return toast('Введи пароль');set('sync');let tk;
+  try{tk=await unlockKey(locked(),pw)}catch(e){set('login');return toast('Неверный пароль')}
+  await connect(tk)}
+ async function makeLock(pw,pw2){if(!pw||pw.length<4)return toast('Пароль — хотя бы 4 символа');if(pw!==pw2)return toast('Пароли не совпадают');
+  const line=`window.YA_LOCKED = "${await lockKey(token(),pw)}";`;
+  modal(`<h2 class="sec">Строка для config.js</h2><p class="hint">Открой на GitHub файл <b>config.js</b> → карандаш → добавь эту строку <b>второй строкой</b> (первую с ClientID не трогай) → Commit changes.</p><textarea id="exporttext" readonly style="min-height:110px">${esc(line)}</textarea><div class="btns"><button class="btn primary" data-act="copy">Копировать</button><button class="btn" data-act="close">Готово</button></div><p class="hint">После этого на любом новом устройстве достаточно открыть сайт и один раз ввести пароль. Пароль не записан нигде — запомни его.</p>`)}
+ let timers=false;function startTimers(){if(timers)return;timers=true;
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')run()});
+  setInterval(()=>{if(document.visibilityState==='visible')run()},120000)}
  function login(){const id=clientId();if(!id)return toast('Сначала впиши ClientID в файл config.js — см. инструкцию в разделе «Облако»');
   const state=Math.random().toString(36).slice(2);try{sessionStorage.setItem('ya.state',state)}catch(e){}
   location.href=`https://oauth.yandex.ru/authorize?response_type=token&client_id=${encodeURIComponent(id)}&redirect_uri=${encodeURIComponent(redirect())}&state=${state}&force_confirm=yes`}
@@ -1195,23 +1224,34 @@ const Cloud=(()=>{
  }
  async function who(){try{const j=await json('GET','/',{fields:'user.display_name,user.login,total_space,used_space'});st.user=(j.user&&(j.user.display_name||j.user.login))||'';st.space=[j.used_space,j.total_space];paint()}catch(e){}}
  async function init(){if(!available())return;catchRedirect();await loadMeta();
+  if(!token()&&(window.YA_TOKEN||'').trim()){ls.set(TK,window.YA_TOKEN.trim());ls.set(TX,null)}
   if(!token()){set(clientId()?'login':'off');return}
   who();await run();if(st.justIn){st.justIn=false;toast('Готово: колоды синхронизируются с Яндекс Диском')}
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')run()});
-  setInterval(()=>{if(document.visibilityState==='visible')run()},120000)}
+  startTimers()}
  function panel(){
   if(!clientId())return `<div class="form"><p class="hint">Облако ещё не настроено. Это делается один раз:</p>
-   <ol class="steps"><li>Открой <b>oauth.yandex.ru/client/new</b> и создай приложение «Студия колод».</li>
-   <li>Платформа: <b>Веб-сервисы</b>. Redirect URI: <code class="sel">${esc(redirect())}</code></li>
+   <ol class="steps"><li>Открой <b>oauth.yandex.ru</b> → «Создать» → <b>«Для доступа к API или отладки»</b>, название «Студия колод».</li>
    <li>Доступы: «Яндекс Диск REST API» → <b>Доступ к папке приложения на Диске</b> и <b>Доступ к информации о Диске</b>.</li>
    <li>Скопируй <b>ClientID</b> и впиши его в файл <b>config.js</b> на GitHub.</li></ol></div>`;
-  if(!token())return `<div class="form"><p class="hint">Колоды будут храниться в папке «Приложения» на твоём Яндекс Диске и появятся на всех устройствах, где ты войдёшь.</p><button class="btn primary" data-act="ya-login" style="padding:12px;font-size:14px">Войти через Яндекс</button><p class="hint">Студия получит доступ только к своей папке — остальные файлы на Диске она не видит.</p></div>`;
+  if(!token()&&locked())return `<div class="form"><p class="hint">Вход уже настроен. На этом устройстве нужно один раз ввести твой пароль студии — дальше он не понадобится.</p>
+   <label class="field"><span>Пароль студии</span><input type="password" id="ya-pw" autocomplete="current-password"></label>
+   <button class="btn primary" data-act="ya-unlock">Войти</button>
+   <details class="item"><summary>Забыл пароль</summary><div class="form"><p class="hint">Удали строку YA_LOCKED из config.js на GitHub и подключи Яндекс Диск заново через ключ.</p></div></details></div>`;
+  if(!token()&&manual())return `<div class="form"><p class="hint">Колоды будут храниться в папке «Приложения» на твоём Яндекс Диске и появятся на всех устройствах, где ты подключишь ключ.</p>
+   <div class="field"><span>Шаг 1</span><a class="btn primary" href="${esc(keyUrl())}" target="_blank" rel="noopener" style="text-align:center;text-decoration:none;padding:11px">Получить ключ в Яндексе</a>
+   <p class="hint">Откроется Яндекс → «Разрешить» → на странице будет ключ (длинная строка). Нажми рядом «Скопировать».</p></div>
+   <label class="field"><span>Шаг 2 · вставь ключ</span><input type="text" id="ya-key" placeholder="y0_AgAAAA…" autocomplete="off"></label>
+   <button class="btn primary" data-act="ya-connect">Подключить Яндекс Диск</button>
+   <p class="hint">Ключ даёт доступ только к папке студии на Диске. Не пересылай его другим людям.</p></div>`;
   return `<div class="form"><div class="stat ok"><span>${esc(st.user||'Яндекс Диск')}<br><small style="color:var(--muted)">${st.space?`Занято ${mb(st.space[0])} из ${mb(st.space[1])}`:'Подключено'}</small></span><b>☁</b></div>
    ${chip()}
    <button class="btn primary" data-act="ya-sync">Синхронизировать сейчас</button>
    <p class="hint">Изменения уходят на Диск сами через несколько секунд. Когда открываешь студию на другом устройстве, колоды подтягиваются автоматически. Файлы лежат на Диске в папке «Приложения».</p>
+   ${manual()?(locked()?'<p class="hint">Вход по паролю для всех устройств включён.</p>':`<details class="item"><summary>Вход на всех устройствах по паролю</summary><div class="form"><p class="hint">Придумай пароль — студия зашифрует им ключ. Строку положишь в config.js, и на телефоне и других ПК хватит один раз ввести пароль.</p>
+    <label class="field"><span>Пароль</span><input type="password" id="ya-np1" autocomplete="new-password"></label><label class="field"><span>Ещё раз</span><input type="password" id="ya-np2" autocomplete="new-password"></label>
+    <button class="btn primary" data-act="ya-lock">Создать строку для config.js</button></div></details>`):''}
    <button class="btn danger" data-act="ya-logout">Выйти из Яндекса</button></div>`}
- return{available,init,run,schedule,login,logout,panel,chip,hashDeck,seedSig,state:st}
+ return{available,init,run,schedule,login,logout,panel,connect,unlock,makeLock,chip,hashDeck,seedSig,state:st}
 })();
 
 // ---------- files: PDF, PNG, JSON ----------
