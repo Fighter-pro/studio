@@ -2933,8 +2933,8 @@ html.locked .app{visibility:hidden}
 .cover .lab small{display:block;font-size:8px;color:#aaa;margin-top:3px;letter-spacing:.1em}
 .cover .ph2{position:absolute;inset:0;display:grid;place-items:center;color:rgba(255,255,255,.3);font-family:var(--f-card);letter-spacing:.2em;text-transform:uppercase;font-size:12px}
 
-.token{width:84px;height:84px;border-radius:50%;background-color:var(--c-char);padding:6px;position:relative;flex:none}
-.token .face{width:100%;height:100%;border-radius:50%;background:#3b2a18 center/cover;border:2px solid #f2e3c9;display:grid;place-items:center;color:#f2e3c9;font-family:var(--f-card);font-size:11px;text-transform:uppercase;text-align:center;overflow:hidden}
+.token{width:calc(84px*var(--tk,1));height:calc(84px*var(--tk,1));border-radius:50%;background-color:var(--c-char);padding:6px;position:relative;flex:none}
+.token .face{position:relative;width:100%;height:100%;border-radius:50%;background:#3b2a18 center/cover;border:2px solid #f2e3c9;display:grid;place-items:center;color:#f2e3c9;font-family:var(--f-card);font-size:11px;text-transform:uppercase;text-align:center;overflow:hidden}
 .token .tv{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);background:#060606;color:#fff;border:1.5px solid #f2e3c9;border-radius:50%;width:24px;height:24px;display:grid;place-items:center;font-family:var(--f-card);font-size:13px}
 .tokwrap{display:flex;flex-direction:column;align-items:center;gap:6px}
 .tokwrap small{color:var(--muted);font-size:11.5px}
@@ -2973,7 +2973,7 @@ html.locked .app{visibility:hidden}
 .slot .cover{border-radius:0}.slot .cover .inner{border-radius:0}
 .sheet .tag{position:absolute;left:10mm;top:6mm;font:9pt var(--f-ui);color:#888}
 .sheet.tok{display:flex;flex-wrap:wrap;align-content:flex-start;justify-content:flex-start;gap:4mm;padding:16mm 12mm}
-.ptok{width:26mm;height:26mm;flex:none}
+.ptok{flex:none}
 .ptok>.token{transform:scale(1.17);transform-origin:0 0}
 .preview{display:flex;flex-direction:column;gap:16px;align-items:flex-start;overflow-x:auto;max-width:100%}
 .preview .sheet{zoom:.6;box-shadow:0 6px 30px rgba(0,0,0,.5)}
@@ -3039,11 +3039,11 @@ html.locked .app{visibility:hidden}
 <script>
 const ICON={
  attack:'<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 1l2 6 5-4-2 6 6 1-5 3 4 5-6-1 1 6-5-4-4 5v-6l-6 2 4-5-5-3 6-1-3-5 6 3z"/></svg>',
- defense:'<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/><path d="M12 5v14" stroke="#6a4c9c" stroke-width="1.6"/></svg>',
+ defense:'<svg viewBox="0 0 24 24" fill="#fff"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/><path d="M12 5v14" stroke="#2a6fc0" stroke-width="1.6"/></svg>',
  versatile:'<svg viewBox="0 0 24 24" fill="#fff"><path d="M8 1l1.5 4 3.5-2-1.5 4 4 .5-3.5 2 2.5 3-4-.5.5 4L8 13l-3 3v-4l-4 1 3-3-3-2 4-.5L3 4l3.5 2z"/><path d="M16 10l6 2v4c0 3.5-2.6 6-6 7.5-3.4-1.5-6-4-6-7.5v-4z"/></svg>',
  scheme:'<svg viewBox="0 0 24 24" fill="#fff"><path d="M13 2L4 14h7l-1 8 10-13h-7z"/></svg>'
 };
-const TYPE={attack:{n:'Атака',c:'#c8242f'},defense:{n:'Защита',c:'#6a4c9c'},versatile:{n:'Универсальная',c:'linear-gradient(135deg,#c8242f 50%,#6a4c9c 50%)',tc:'#94386a'},scheme:{n:'Приём',c:'#d39b1c'}};
+const TYPE={attack:{n:'Атака',c:'#c8242f'},defense:{n:'Защита',c:'#2a6fc0'},versatile:{n:'Универсальная',c:'#7b4aa8',tc:'#7b4aa8'},scheme:{n:'Приём',c:'#d39b1c'}};
 const SWORD='<svg viewBox="0 0 46 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="8"/><circle cx="36" cy="10" r="8"/><path d="M4 10h38M8 7v6"/></svg>';
 const BOW='<svg viewBox="0 0 46 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="8"/><circle cx="36" cy="10" r="8"/><path d="M4 10h36M36 6l5 4-5 4"/></svg>';
 
@@ -3212,7 +3212,9 @@ function heroCard(){
 
 function ruleCard(r,i){return `<div class="card rule" data-edit="rules:${i}"><div class="inner"><div class="rt fit">${esc(r.title)}</div><div class="rx fitb">${rich(r.text)}</div></div></div>`}
 function coverCard(){const c=deck.cover;return `<div class="card cover" data-edit="cover"><div class="inner">${c.image?artImg(c.image,c.crop):genBack()}<div class="lab">${esc(c.label||deck.name)}${deck.author?`<small>${esc(deck.author)}</small>`:''}</div></div></div>`}
-function tokenFace(t,i){return `<div class="tokwrap"><div class="token" data-edit="tokens:${i}"><div class="face" ${t.image?`style="background-image:url(${t.image})"`:''}>${t.image?'':esc(t.name)}</div>${t.value!==''&&t.value!=null?`<div class="tv">${esc(t.value)}</div>`:''}</div><small>${esc(t.name)} ×${esc(t.qty)}</small></div>`}
+const TOKSIZE={s:{n:'Маленький · 20 мм',mm:20},m:{n:'Обычный · 26 мм',mm:26},l:{n:'Большой · 35 мм',mm:35},xl:{n:'Для бойца · 45 мм',mm:45}};
+const tokMM=t=>(TOKSIZE[t.size]||TOKSIZE.m).mm;
+function tokenFace(t,i){const k=tokMM(t)/26;return `<div class="tokwrap"><div class="token" data-edit="tokens:${i}" style="--tk:${k}"><div class="face">${t.image?artImg(t.image,t.crop):esc(t.name)}</div>${t.value!==''&&t.value!=null?`<div class="tv">${esc(t.value)}</div>`:''}</div><small>${esc(t.name)} ×${esc(t.qty)}</small></div>`}
 
 const wrap=(html,id)=>`<div class="wrap">${html}<button class="btn sm png" data-png="${id}" title="Сохранить как картинку">PNG</button></div>`;
 
@@ -3264,7 +3266,7 @@ function buildSheets(){
   for(let s=0;s<ex.length;s+=9){const ch=ex.slice(s,s+9);out.push(sheet(Array.from({length:9},(_,k)=>slot(ch[k],'char')).join('')))}
  }
  if(o.tokens&&deck.tokens.length){
-  const tk=deck.tokens.flatMap((t,i)=>Array.from({length:Math.max(0,+t.qty||0)},()=>`<div class="ptok">${tokenFace(t,i).replace(/<small>.*?<\/small>/,'').replace('class="tokwrap"','style="display:contents"')}</div>`));
+  const tk=deck.tokens.flatMap((t,i)=>Array.from({length:Math.max(0,+t.qty||0)},()=>`<div class="ptok" style="width:${tokMM(t)}mm;height:${tokMM(t)}mm">${tokenFace(t,i).replace(/<small>.*?<\/small>/,'').replace('class="tokwrap"','style="display:contents"')}</div>`));
   out.push(`<div class="sheet tok">${tk.join('')}</div>`);
  }
  return out.join('').replace(/ data-edit="[^"]*"/g,'');
@@ -3313,7 +3315,8 @@ const F={
  img:(l,p,v)=>`<div class="field"><span>${l}</span><div class="imgfield"><div class="thumb" style="${v?`background-image:url(${v})`:''}"></div><label class="btn sm">Загрузить<input type="file" accept="image/*" data-img="${p}" hidden></label>${v?`<button class="btn sm danger" data-clear="${p}">Убрать</button>`:''}</div></div>`
 };
 const ATK=[['melee','Ближняя'],['ranged','Дальняя']];
-function cropFields(p,o){if(!o.image)return'';o.crop=Object.assign({x:50,y:50,z:1},o.crop||{});const c=o.crop;
+function cropFields(p,o,tok){if(!o.image)return'';o.crop=Object.assign({x:50,y:50,z:1},o.crop||{});const c=o.crop;
+ if(tok)return `<div class="cropbox"><p class="hint" style="margin:0">Кадр в круге: уменьши масштаб или нажми «Вписать целиком», чтобы картинка поместилась.</p><div class="form" style="gap:6px">${F.range('Масштаб',p+'crop.z',c.z,0.4,3,0.05,v=>Math.round(v*100)+'%')}${F.range('← →',p+'crop.x',c.x,0,100,1,v=>v+'%')}${F.range('↑ ↓',p+'crop.y',c.y,0,100,1,v=>v+'%')}</div><div class="btns"><button class="btn sm" data-fit="${p}crop">${c.fit?'Заполнить круг':'Вписать целиком'}</button><button class="btn sm" data-crop-reset="${p}crop">Сбросить кадр</button></div></div>`;
  return `<div class="cropbox"><p class="hint" style="margin:0">Кадр арта: подвинь картинку, чтобы главное не уходило под ленту.</p><div class="form" style="gap:6px">${F.range('Масштаб',p+'crop.z',c.z,1,3,0.05,v=>Math.round(v*100)+'%')}${F.range('← →',p+'crop.x',c.x,0,100,1,v=>v+'%')}${F.range('↑ ↓',p+'crop.y',c.y,0,100,1,v=>v+'%')}</div><button class="btn sm" data-crop-reset="${p}crop">Сбросить кадр</button></div>`}
 const boldHint='<p class="hint">**текст** — жирный, Enter — новая строка.</p>';
 
@@ -3393,7 +3396,7 @@ function renderSide(){
  if(section==='hero'){const h=deck.hero;body=`<div class="form">${F.text('Имя героя','hero.name',h.name)}${F.sel('Атака','hero.attack',h.attack,ATK)}<div class="row">${F.num('Здоровье','hero.health',h.health)}${F.num('Перемещение','hero.move',h.move)}</div>${F.area('Особая способность','hero.ability',h.ability,'**Название.** Описание…')}${boldHint}${F.area('Описание героя для артов (по-английски)','artDesc',deck.artDesc||'','Ryuk, shinigami from Death Note, tall and lanky, spiky black hair, huge toothy grin')}<p class="hint">Из этого описания и стиля колоды собираются промпты для Midjourney.</p></div>`}
  if(section==='sidekicks')body=itemList('sidekicks','помощник',null,(it,i)=>`${F.text('Имя','sidekicks.'+i+'.name',it.name)}${F.sel('Атака','sidekicks.'+i+'.attack',it.attack,ATK)}<div class="row">${F.num('Здоровье','sidekicks.'+i+'.health',it.health)}${F.num('Количество','sidekicks.'+i+'.qty',it.qty)}</div>${F.text('Описание для артов (по-английски)','sidekicks.'+i+'.artDesc',it.artDesc||'')}`,it=>`${esc(it.name)}<span class="q">${it.health} ОЗ ×${it.qty}</span>`);
  if(section==='rules')body=itemList('rules','карта правил',null,(it,i)=>`${F.text('Заголовок','rules.'+i+'.title',it.title)}${F.area('Текст','rules.'+i+'.text',it.text)}${boldHint}`,it=>esc(it.title));
- if(section==='tokens')body=itemList('tokens','жетон',null,(it,i)=>`${F.text('Название','tokens.'+i+'.name',it.name)}<div class="row">${F.text('Число на жетоне','tokens.'+i+'.value',it.value)}${F.num('Количество','tokens.'+i+'.qty',it.qty)}</div>${F.img('Картинка','tokens.'+i+'.image',it.image)}`,it=>`${esc(it.name)}<span class="q">×${it.qty}</span>`);
+ if(section==='tokens')body=itemList('tokens','жетон',null,(it,i)=>`${F.text('Название','tokens.'+i+'.name',it.name)}<div class="row">${F.text('Число на жетоне','tokens.'+i+'.value',it.value)}${F.num('Количество','tokens.'+i+'.qty',it.qty)}</div>${F.sel('Размер','tokens.'+i+'.size',it.size||'m',Object.entries(TOKSIZE).map(([k,v])=>[k,v.n]))}${F.img('Картинка','tokens.'+i+'.image',it.image)}${cropFields('tokens.'+i+'.',it,true)}`,it=>`${esc(it.name)}<span class="q">×${it.qty}</span>`);
  if(section==='actions'){
   const who=[deck.hero.name,...deck.sidekicks.map(s=>s.name)];
   body='<button class="btn sm" data-act="allprompts" style="margin-bottom:10px">✦ Промпты Midjourney для всех карт</button>'+itemList('actions','карта действия',null,(it,i)=>{const p='actions.'+i+'.';return `${F.text('Название',p+'title',it.title)}
@@ -3455,6 +3458,7 @@ document.addEventListener('click',async e=>{
  const t=e.target.closest('button,a[data-sec],[data-edit],details summary');if(!t)return;
  if(t.matches('[data-png]')){e.stopPropagation();return exportPng(t)}
  if(t.dataset.prompt){const [k,i]=t.dataset.prompt.split(':');return promptModal(k==='card'?mjPrompt('card',deck.actions[+i]):mjPrompt(k),k==='card'?'Промпт: '+esc(deck.actions[+i].title):'Промпт для рубашки')}
+ if(t.dataset.fit){const c=getP(t.dataset.fit)||{};c.fit=!c.fit;if(c.fit){c.z=1;c.x=50;c.y=50}setP(t.dataset.fit,c);const det=t.closest('details');if(det)openItem=det.id.slice(3).replace('-',':');save();return render()}
  if(t.dataset.cropReset){setP(t.dataset.cropReset,{x:50,y:50,z:1});const det=t.closest('details');if(det)openItem=det.id.slice(3).replace('-',':');save();return render()}
  if(t.dataset.share)return shareDeck(t.dataset.share);
  if(t.dataset.restore!==undefined)return restoreVersion(+t.dataset.restore);
@@ -3507,7 +3511,7 @@ $('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()})
 
 // ---------- art: crop, generated back, Midjourney prompts ----------
 function cropOf(o){const c=o&&o.crop||{};return{x:c.x??50,y:c.y??50,z:c.z??1}}
-function artImg(src,crop){const c=cropOf({crop});return `<img class="artimg" alt="" src="${src}" style="object-position:${c.x}% ${c.y}%;transform:scale(${c.z});transform-origin:${c.x}% ${c.y}%">`}
+function artImg(src,crop){const c=cropOf({crop}),fit=crop&&crop.fit?'contain':'cover';return `<img class="artimg" alt="" src="${src}" style="object-fit:${fit};object-position:${c.x}% ${c.y}%;transform:scale(${c.z});transform-origin:${c.x}% ${c.y}%">`}
 const PATTERNS={rays:'Лучи',diamonds:'Ромбы',rings:'Круги',stars:'Звёзды',plain:'Без узора'};
 function genBack(){const L=Object.assign({},LOOK0,deck.look),p=deck.cover.pattern||'rays',name=(deck.hero&&deck.hero.name)||deck.name||'';
  const mono=name.trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'?';
