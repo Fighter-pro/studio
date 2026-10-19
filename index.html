@@ -8,6 +8,8 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="theme-color" content="#0a0f1d">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<meta name="referrer" content="no-referrer">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Студия колод">
@@ -2847,6 +2849,13 @@ code.sel{user-select:all;background:var(--panel-2);padding:2px 5px;border-radius
 .hrow{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:7px 9px}
 .hrow span{display:flex;flex-direction:column;min-width:0}.hrow b{font-size:12.5px}.hrow small{color:var(--muted);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ttscell{display:inline-block}
+html.locked .app{visibility:hidden}
+#gate{position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-items:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));background-image:radial-gradient(#26304a 1px,transparent 1px);background-size:18px 18px}
+.gbox{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px 24px;width:100%;max-width:340px;display:flex;flex-direction:column;gap:12px;text-align:center}
+.gbox h1{font-family:var(--f-card);text-transform:uppercase;letter-spacing:.04em;font-size:26px;margin:0}
+.gbox p{margin:0;color:var(--muted);font-size:13px}.glogo{color:var(--accent);font-size:28px}
+.gbox input{background:var(--panel-2);border:1px solid var(--line);border-radius:8px;padding:11px 12px;font-size:15px;text-align:center}
+.gbox .btn{padding:11px}.gerr{color:var(--danger)!important}
 .flash{animation:flash 1.2s ease}
 @keyframes flash{0%{box-shadow:0 0 0 3px var(--accent)}100%{box-shadow:0 0 0 0 transparent}}
 .foot{margin-top:auto;border:1px solid var(--line);border-radius:10px;padding:12px;color:var(--muted);font-size:12px;line-height:1.5;background:var(--panel-2)}
@@ -3227,7 +3236,7 @@ function deckGallery(){
    <button class="dopen" data-open="${d.id}" title="Открыть">${deckThumb(d)}</button>
    <div class="dinfo"><b>${esc(d.name)}</b><small>${esc((d.hero&&d.hero.name)||'')} · ${n} ${n%10===1&&n%100!==11?'карта':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?'карты':'карт'} · ${esc(styleName(d.look))}</small>${cur?'<span class="pill">Открыта сейчас</span>':''}</div>
    ${delAsk===d.id?`<div class="dact"><span class="hint" style="flex-basis:100%">Удалить «${esc(d.name)}» навсегда?</span><button class="btn sm danger" data-delyes="${d.id}">Да, удалить</button><button class="btn sm" data-delno>Отмена</button></div>`
-   :`<div class="dact"><button class="btn sm primary" data-open="${d.id}">Открыть</button><button class="btn sm" data-copy="${d.id}">Копия</button><button class="btn sm danger" data-delask="${d.id}">Удалить</button>${Cloud.available()?`<button class="btn sm" data-share="${d.id}">Поделиться</button>`:''}</div>`}
+   :`<div class="dact"><button class="btn sm primary" data-open="${d.id}">Открыть</button><button class="btn sm" data-copy="${d.id}">Копия</button><button class="btn sm danger" data-delask="${d.id}">Удалить</button><button class="btn sm" data-share="${d.id}" title="Скачать файл колоды, чтобы отправить другу">Поделиться</button></div>`}
   </div>`}).join('')}
  </div></div>`}
 function popt(){return deck.printOpt||(deck.printOpt={backs:true,extras:true,tokens:true})}
@@ -3290,7 +3299,7 @@ const SECTIONS=[
  ['tokens','Жетоны','Счётчики и маркеры'],
  ['balance','Баланс и пробная рука','Анализ колоды, тестовая раздача'],
  ['print','Печать / PDF','Листы A4 с линиями реза'],
- ['cloud','Облако · Яндекс Диск','Синхронизация между устройствами']];
+ ['cloud','Облако','Колоды на всех устройствах']];
 function secCount(k){return {decks:store?Object.keys(store.decks).length:0,rules:deck.rules.length,sidekicks:deck.sidekicks.length,actions:count(),tokens:deck.tokens.length}[k]}
 
 const F={
@@ -3337,8 +3346,7 @@ function renderSide(){
    <div class="btns"><button class="btn" data-act="import">Импорт JSON</button><button class="btn" data-act="sample">Пример (Хищник)</button></div>
    ${canSave()?'<button class="btn" data-act="dlall">Скачать все колоды (резервная копия)</button>':''}
    <p class="hint">Нажми на колоду справа, чтобы открыть её и редактировать. Удаление спрашивает подтверждение.</p>
-   <div class="stat" id="stinfo"><span>Колод: ${Object.keys(store.decks).length}<br><small style="color:var(--muted)">Занято на этом устройстве</small></span><b style="font-size:14px">…</b></div>
-   ${Cloud.state.space?`<div class="stat ok"><span>Яндекс Диск<br><small style="color:var(--muted)">Свободно ${mb(Cloud.state.space[1]-Cloud.state.space[0])} из ${mb(Cloud.state.space[1])}</small></span><b>☁</b></div>`:''}</div>`;
+   <div class="stat" id="stinfo"><span>Колод: ${Object.keys(store.decks).length}<br><small style="color:var(--muted)">Занято на этом устройстве</small></span><b style="font-size:14px">…</b></div></div>`;
   storageInfo().then(i=>{const el=document.getElementById('stinfo');if(!el)return;const b=el.querySelector('b');b.textContent=i&&i.quota?`${mb(i.used)} из ${mb(i.quota)}`:(storageMode==='ls'?'до 5 МБ':'—')})}
  if(section==='main')setTimeout(historyPanel,0);
  if(section==='main'){
@@ -3447,7 +3455,6 @@ document.addEventListener('click',async e=>{
  if(t.dataset.prompt){const [k,i]=t.dataset.prompt.split(':');return promptModal(k==='card'?mjPrompt('card',deck.actions[+i]):mjPrompt(k),k==='card'?'Промпт: '+esc(deck.actions[+i].title):'Промпт для рубашки')}
  if(t.dataset.cropReset){setP(t.dataset.cropReset,{x:50,y:50,z:1});const det=t.closest('details');if(det)openItem=det.id.slice(3).replace('-',':');save();return render()}
  if(t.dataset.share)return shareDeck(t.dataset.share);
- if(t.dataset.unshare){Cloud.unpublish(t.dataset.unshare).then(()=>{closeModal();toast('Доступ по ссылке закрыт')}).catch(()=>toast('Не получилось закрыть доступ'));return}
  if(t.dataset.restore!==undefined)return restoreVersion(+t.dataset.restore);
  if(t.dataset.open){e.preventDefault();const d=store.decks[t.dataset.open];if(d){deck=d;store.current=d.id;save();section=null;delAsk=null;render();toast('Открыта колода «'+d.name+'»')}return}
  if(t.dataset.copy){const d=JSON.parse(JSON.stringify(store.decks[t.dataset.copy]));d.id='d'+Date.now();d.name=d.name+' (копия)';store.decks[d.id]=d;save();renderBench();renderSide();return toast('Копия создана')}
@@ -3476,12 +3483,10 @@ document.addEventListener('click',async e=>{
  if(a==='hand-new'){handNew();if(section!=='balance'){section='balance';renderSide()}renderBench();return document.getElementById('handzone')?.scrollIntoView({behavior:'smooth',block:'start'})}
  if(a==='hand-draw'){if(hand.pile.length)hand.cards.push(hand.pile.shift());return renderBench()}
  if(a==='hand-clear'){hand.cards=[];hand.pile=[];return renderBench()}
- if(a==='ya-login')return Cloud.login();
- if(a==='ya-unlock')return Cloud.unlock(($('#ya-pw')||{}).value);
- if(a==='ya-lock')return Cloud.makeLock(($('#ya-np1')||{}).value,($('#ya-np2')||{}).value);
- if(a==='ya-connect')return Cloud.connect(($('#ya-key')||{}).value);
- if(a==='ya-logout')return Cloud.logout();
- if(a==='ya-sync')return Cloud.run();
+ if(a==='gh-connect')return Cloud.connect(($('#gh-key')||{}).value);
+ if(a==='gh-lock')return Cloud.makeLock(($('#gh-np1')||{}).value,($('#gh-np2')||{}).value);
+ if(a==='gh-logout')return Cloud.logout();
+ if(a==='gh-sync')return Cloud.run();
  if(a==='savepng'){if(lastPng)saveFile(t.dataset.name,lastPng);return}
  if(a==='dl')return download(JSON.stringify(deck),(deck.name||'колода')+'.json');
  if(a==='dlall')return download(JSON.stringify({allDecks:Object.values(store.decks)}),'все-колоды-'+new Date().toISOString().slice(0,10)+'.json');
@@ -3615,175 +3620,135 @@ async function historyPanel(){const el=document.getElementById('histlist');if(!e
  el.innerHTML=h.length?h.map((v,i)=>{const n=(v.data.actions||[]).reduce((s,a)=>s+(+a.qty||0),0);return `<div class="hrow"><span><b>${new Date(v.t).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</b><small>${esc(v.why)} · ${n} ${plural(n,'карта','карты','карт')} · «${esc(v.data.name)}»</small></span><button class="btn sm" data-restore="${i}">Вернуть</button></div>`}).join(''):'<p class="hint">Пока нет сохранённых версий. Они появляются сами каждые 10 минут работы над колодой.</p>'}
 async function restoreVersion(i){const h=await histGet(deck.id),v=h[i];if(!v)return;await snapshot(deck,'Перед возвратом');
  const d=JSON.parse(JSON.stringify(v.data));d.id=deck.id;store.decks[d.id]=d;deck=d;save();render();toast('Версия возвращена. Текущая сохранена в истории.')}
-// ---------- share via public Yandex Disk link ----------
-async function shareDeck(id){
- if(!Cloud.state||Cloud.state.status==='off'||Cloud.state.status==='login')return toast('Чтобы делиться, подключи Яндекс Диск в разделе «Облако»');
- modal(`<h2 class="sec">Ссылка на колоду</h2><p class="hint">Готовлю ссылку…</p>`);
- try{const link=await Cloud.publish(id);
-  let qr='';try{const q=qrcode(0,'M');q.addData(link);q.make();qr=q.createSvgTag({cellSize:4,margin:2,scalable:true})}catch(e){}
-  modal(`<h2 class="sec">Ссылка на колоду</h2><p class="hint">Отправь ссылку другу. Он откроет колоду в студии и сможет сохранить себе копию. Когда ты меняешь колоду, по ссылке открывается свежая версия.</p>
-   <textarea id="exporttext" readonly style="min-height:70px">${esc(link)}</textarea>${qr?`<div class="qr">${qr}</div>`:''}
-   <div class="btns"><button class="btn primary" data-act="copy">Копировать ссылку</button><button class="btn danger" data-unshare="${id}">Закрыть доступ</button><button class="btn" data-act="close">Готово</button></div>`)}
- catch(e){console.error(e);modal(`<h2 class="sec">Не получилось</h2><p class="hint">${esc(e.message||'Ошибка Яндекс Диска')}. Проверь интернет и попробуй ещё раз.</p><button class="btn" data-act="close">Закрыть</button>`)}}
-async function openShared(key){
- modal(`<h2 class="sec">Колода по ссылке</h2><p class="hint">Загружаю…</p>`);
- try{const d=await Cloud.fetchPublic(key);if(!d||!d.actions)throw new Error('Это не файл колоды');window._sharedDeck=d;
-  const n=d.actions.reduce((s,a)=>s+(+a.qty||0),0);
-  modal(`<h2 class="sec">Колода по ссылке</h2><div class="shprev">${deckThumb(d)}<div><b style="font-size:18px">${esc(d.name)}</b><p class="hint">${esc(d.hero&&d.hero.name||'')} · ${n} ${plural(n,'карта','карты','карт')} · ${esc(styleName(d.look))}${d.author?' · автор: '+esc(d.author):''}</p></div></div>
-   <div class="btns"><button class="btn primary" data-act="shared-save">Сохранить себе</button><button class="btn" data-act="close">Закрыть</button></div>`)}
- catch(e){console.error(e);modal(`<h2 class="sec">Колода недоступна</h2><p class="hint">Возможно, автор закрыл доступ или ссылка скопирована не целиком.</p><button class="btn" data-act="close">Закрыть</button>`)}
- try{history.replaceState(null,'',location.pathname)}catch(e){}}
-
-// ---------- cloud: Yandex Disk sync (site version only) ----------
+// ---------- share a deck as a file ----------
+function shareDeck(id){const d=store.decks[id];if(!d)return;const c=JSON.parse(JSON.stringify(d));delete c._seed;
+ if(!canSave())return toast('Скачивание здесь недоступно');saveFile(safeName(d.name)+'.json',JSON.stringify(c));
+ setTimeout(()=>toast('Отправь файл другу (например в Telegram). Он откроет студию → «Мои колоды» → «Импорт JSON».'),1200)}
+// ---------- cloud: private GitHub repository sync (site version only) ----------
 const Cloud=(()=>{
- const API='https://cloud-api.yandex.net/v1/disk', DIR='app:/decks';
- const TK='ya.token', TX='ya.exp';
+ const API='https://api.github.com',TK='gh.token';
  const ls={get:k=>{try{return localStorage.getItem(k)}catch(e){return null}},set:(k,v)=>{try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
- const st={status:'off',msg:'',last:0,user:'',busy:false,again:false,synced:{}};
- const clientId=()=>(window.YA_CLIENT_ID||'').trim();
+ const st={status:'off',msg:'',last:0,busy:false,again:false,synced:{},user:''};
+ const repo=()=>(window.GH_REPO||'').trim().replace(/^https?:\/\/github\.com\//,'').replace(/\/+$/,'');
+ const locked=()=>(window.GH_LOCKED||'').trim();
  const available=()=>window.self===window.top&&location.protocol==='https:';
- const token=()=>{const t=ls.get(TK),x=+ls.get(TX)||0;return t&&(!x||x>Date.now())?t:null};
- const redirect=()=>location.origin+location.pathname.replace(/index\.html$/,'');
+ const token=()=>ls.get(TK);
  function fnv(str){let h=2166136261>>>0;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0}return h.toString(36)+':'+str.length}
  const hashDeck=d=>fnv(JSON.stringify(d,(k,v)=>k&&k[0]==='_'?undefined:v));
  const seedSig=d=>fnv(JSON.stringify([d.name,d.author,d.hero,d.sidekicks,d.rules,d.actions,d.tokens,d.cover]));
  const isSeed=d=>d&&d._seed&&seedSig(d)===d._seed;
  function set(status,msg){st.status=status;st.msg=msg||'';paint()}
  function paint(){document.querySelectorAll('[data-cloud-chip]').forEach(el=>{el.innerHTML=chip()});if(section==='cloud'&&!document.activeElement?.closest?.('#side'))renderSide()}
- function chip(){if(!available())return'';const t=new Date(st.last).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
-  const m={off:['Облако выключено','muted'],login:['Подключи Яндекс Диск','warn'],sync:['Синхронизирую…','muted'],ok:[`Сохранено на Диске · ${t}`,'ok'],err:[st.msg||'Ошибка облака','bad'],offline:['Нет связи — сохранено на устройстве','warn']}[st.status]||['','muted'];
+ function chip(){if(!available()||!repo())return'';const t=new Date(st.last).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
+  const m={off:['Облако не подключено','muted'],login:['Подключи хранилище','warn'],sync:['Синхронизирую…','muted'],ok:[`Сохранено в облаке · ${t}`,'ok'],err:[st.msg||'Ошибка облака','bad'],offline:['Нет связи — сохранено на устройстве','warn']}[st.status]||['','muted'];
   return `<button class="cchip ${m[1]}" data-sec="cloud">☁ ${esc(m[0])}</button>`}
- const tfetch=(u,o={},ms=20000)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);return fetch(u,{...o,signal:c.signal}).finally(()=>clearTimeout(t))};
- async function api(method,path,params={}){
-  const u=new URL(API+path);for(const k in params)u.searchParams.set(k,params[k]);
-  let r;try{r=await tfetch(u,{method,headers:{Authorization:'OAuth '+token()}})}catch(e){const er=new Error('net');er.net=true;throw er}
-  if(r.status===401){logout(true);const er=new Error('auth');er.auth=true;throw er}
+ const tfetch=(u,o={},ms=30000)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);return fetch(u,{...o,signal:c.signal}).finally(()=>clearTimeout(t))};
+ async function gh(method,path,body,accept,tk){
+  let r;try{r=await tfetch(API+path,{method,headers:{Authorization:'Bearer '+(tk||token()),Accept:accept||'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28',...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined})}
+  catch(e){throw Object.assign(new Error('net'),{net:true})}
+  if(r.status===401&&!tk){ls.set(TK,null);throw Object.assign(new Error('auth'),{auth:true})}
   return r}
- async function json(method,path,params){const r=await api(method,path,params);if(!r.ok){const er=new Error('http '+r.status);er.status=r.status;throw er}return r.status===204?null:r.json()}
- async function list(){
-  const items=[];let off=0;
-  for(;;){const r=await api('GET','/resources',{path:DIR,limit:200,offset:off,fields:'_embedded.items.name,_embedded.items.modified,_embedded.total'});
-   if(r.status===404){const c=await api('PUT','/resources',{path:DIR});if(!c.ok&&c.status!==409)throw Object.assign(new Error('mkdir'),{status:c.status});return items}
-   if(!r.ok)throw Object.assign(new Error('list'),{status:r.status});
-   const j=await r.json(),e=j._embedded||{},got=e.items||[];items.push(...got);off+=got.length;if(!got.length||off>=(e.total||0))return items}}
- async function upload(d){
-  const p=`${DIR}/${d.id}.json`;const {href,method}=await json('GET','/resources/upload',{path:p,overwrite:'true'});
-  let r;try{r=await tfetch(href,{method:method||'PUT',body:new Blob([JSON.stringify(d)],{type:'application/octet-stream'})})}catch(e){throw Object.assign(new Error('net'),{net:true})}
-  if(!r.ok&&r.status!==201&&r.status!==202)throw Object.assign(new Error('upload'),{status:r.status});
-  const meta=await json('GET','/resources',{path:p,fields:'modified'});return meta.modified}
- const proxy=()=>(window.YA_PROXY||'').trim().replace(/\/+$/,'');
- const viaProxy=href=>proxy()?`${proxy()}/?u=${encodeURIComponent(href)}`:href;
- async function grab(href){try{return await tfetch(viaProxy(href),{},25000)}catch(e){throw Object.assign(new Error(proxy()?'Посредник не ответил':'Яндекс не отдал файл колоды'),{net:true,dl:true,noProxy:!proxy()})}}
- async function download(name){const {href}=await json('GET','/resources/download',{path:`${DIR}/${name}`});
-  const r=await grab(href);
-  if(!r.ok)throw Object.assign(new Error('download'),{status:r.status});return r.json()}
- const del=name=>api('DELETE','/resources',{path:`${DIR}/${name}`,permanently:'true'});
- async function loadMeta(){try{st.synced=(IDB.db&&await IDB.get('sync'))||{}}catch(e){st.synced={}}}
- async function saveMeta(){try{IDB.db&&await IDB.set('sync',st.synced)}catch(e){}}
+ async function ok(r,what){if(r.ok)return r;let m='';try{m=(await r.json()).message||''}catch(e){}throw Object.assign(new Error(what+' ('+r.status+(m?': '+m:'')+')'),{status:r.status})}
+ const P=p=>`/repos/${repo()}/contents/${p.split('/').map(encodeURIComponent).join('/')}`;
+ async function tree(){const r=await gh('GET',`/repos/${repo()}/git/trees/HEAD?recursive=1`);if(r.status===409)return[];
+  await ok(r,'Не удалось прочитать репозиторий');return((await r.json()).tree||[]).filter(x=>x.type==='blob')}
+ const b64utf8=s=>{const u=new TextEncoder().encode(s);let o='';for(let i=0;i<u.length;i+=32768)o+=String.fromCharCode(...u.subarray(i,i+32768));return btoa(o)};
+ async function putFile(path,b64,sha,msg){const r=await gh('PUT',P(path),{message:msg,content:b64,...(sha?{sha}:{})});await ok(r,'Не удалось сохранить');return(await r.json()).content.sha}
+ async function rawText(path){const r=await gh('GET',P(path),null,'application/vnd.github.raw+json');await ok(r,'Не удалось скачать');return r.text()}
+ async function rawDataURL(path,mime){const r=await gh('GET',P(path),null,'application/vnd.github.raw+json');await ok(r,'Не удалось скачать картинку');const b=await r.blob();
+  return new Promise((res,rej)=>{const f=new FileReader();f.onload=()=>res(String(f.result).replace(/^data:[^;]*;/,`data:${mime};`));f.onerror=rej;f.readAsDataURL(b)})}
+ // images are stored once each under images/<hash>.<ext>; deck files reference them as "gh:<name>"
+ const IMG_KEYS=d=>{const out=[];if(d.cover)out.push([d.cover,'image']);(d.actions||[]).forEach(a=>out.push([a,'image']));(d.tokens||[]).forEach(t=>out.push([t,'image']));return out};
+ async function imgName(dataUrl){const m=/^data:([^;]+);base64,(.*)$/.exec(dataUrl);if(!m)return null;const bin=Uint8Array.from(atob(m[2]),c=>c.charCodeAt(0));
+  const h=new Uint8Array(await crypto.subtle.digest('SHA-256',bin));const hex=[...h.slice(0,12)].map(x=>x.toString(16).padStart(2,'0')).join('');
+  const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif'}[m[1]]||'jpg';return{name:hex+'.'+ext,b64:m[2],mime:m[1]}}
+ const mimeOf=n=>({jpg:'image/jpeg',png:'image/png',webp:'image/webp',gif:'image/gif'})[n.split('.').pop()]||'image/jpeg';
+ async function toRemote(d,have){const c=JSON.parse(JSON.stringify(d));delete c._seed;
+  for(const [o,k] of IMG_KEYS(c)){const v=o[k];if(!v||!v.startsWith('data:'))continue;const im=await imgName(v);if(!im)continue;
+   if(!have.has('images/'+im.name)){await putFile('images/'+im.name,im.b64,null,'Картинка для «'+d.name+'»');have.add('images/'+im.name)}
+   try{await IDB.set('img:'+im.name,v)}catch(e){}o[k]='gh:'+im.name}
+  return c}
+ async function fromRemote(c){for(const [o,k] of IMG_KEYS(c)){const v=o[k];if(!v||!v.startsWith('gh:'))continue;const n=v.slice(3);
+   let du=null;try{du=await IDB.get('img:'+n)}catch(e){}if(!du){du=await rawDataURL('images/'+n,mimeOf(n));try{await IDB.set('img:'+n,du)}catch(e){}}o[k]=du}
+  return c}
+ async function loadMeta(){try{st.synced=(IDB.db&&await IDB.get('ghsync'))||{}}catch(e){st.synced={}}}
+ async function saveMeta(){try{IDB.db&&await IDB.set('ghsync',st.synced)}catch(e){}}
+ async function upload(L,have,sha){const c=await toRemote(L,have);return putFile(`decks/${L.id}.json`,b64utf8(JSON.stringify(c)),sha,'Колода «'+L.name+'»')}
+ async function download(id){const c=JSON.parse(await rawText(`decks/${id}.json`));c.id=id;return fromRemote(c)}
  async function run(){
-  if(!token()){set(clientId()?'login':'off');return}
-  if(st.busy){st.again=true;return}
-  st.busy=true;set('sync');let changed=false;
+  if(!repo()){set('off');return}if(!token()){set('login');return}
+  if(st.busy){st.again=true;return}st.busy=true;set('sync');let changed=false;
   try{
-   const remote=await list();const R={};remote.forEach(it=>{const m=/^(.+)\.json$/.exec(it.name);if(m)R[m[1]]=it.modified});
+   const files=await tree(),R={},have=new Set();files.forEach(f=>{have.add(f.path);const m=/^decks\/(.+)\.json$/.exec(f.path);if(m)R[m[1]]=f.sha});
    const S=st.synced,first=!Object.keys(S).length;
-   // a fresh device: drop the untouched starter deck when the Disk already has decks
    if(first&&Object.keys(R).length)for(const d of Object.values(store.decks))if(isSeed(d)){delete store.decks[d.id];changed=true}
    for(const id of new Set([...Object.keys(store.decks),...Object.keys(R),...Object.keys(S)])){
     const L=store.decks[id],rm=R[id],s=S[id];
     if(isSeed(L)&&!rm)continue;
-    if(L){const h=hashDeck(L),dirty=!s||s.hash!==h,rch=rm&&(!s||s.mod!==rm);
-     if(!rm){ if(s&&!dirty){delete store.decks[id];delete S[id];changed=true} else {const mod=await upload(L);S[id]={hash:h,mod}} }
-     else if(dirty&&!rch){const mod=await upload(L);S[id]={hash:h,mod}}
-     else if(!dirty&&rch){const d=await download(id+'.json');d.id=id;store.decks[id]=d;S[id]={hash:hashDeck(d),mod:rm};changed=true}
-     else if(dirty&&rch){ // edited on two devices: keep both
-      const d=await download(id+'.json');d.id=id;const mine=JSON.parse(JSON.stringify(L));mine.id='d'+Date.now()+Math.random().toString(36).slice(2,6);mine.name=L.name+' (с этого устройства)';
-      store.decks[id]=d;S[id]={hash:hashDeck(d),mod:rm};store.decks[mine.id]=mine;const mod=await upload(mine);S[mine.id]={hash:hashDeck(mine),mod};changed=true;toast('Колода «'+L.name+'» менялась на двух устройствах — сохранены обе версии')}
-    }else if(rm){ if(s&&s.mod===rm){await del(id+'.json');delete S[id]} else {const d=await download(id+'.json');d.id=id;store.decks[id]=d;S[id]={hash:hashDeck(d),mod:rm};changed=true} }
+    if(L){const h=hashDeck(L),dirty=!s||s.hash!==h,rch=rm&&(!s||s.sha!==rm);
+     if(!rm){ if(s&&!dirty){delete store.decks[id];delete S[id];changed=true} else {S[id]={hash:h,sha:await upload(L,have,null)}} }
+     else if(dirty&&!rch){S[id]={hash:h,sha:await upload(L,have,rm)}}
+     else if(!dirty&&rch){const d=await download(id);store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true}
+     else if(dirty&&rch){const d=await download(id);const mine=JSON.parse(JSON.stringify(L));mine.id='d'+Date.now()+Math.random().toString(36).slice(2,6);mine.name=L.name+' (с этого устройства)';
+      store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};store.decks[mine.id]=mine;S[mine.id]={hash:hashDeck(mine),sha:await upload(mine,have,null)};changed=true;toast('Колода «'+L.name+'» менялась на двух устройствах — сохранены обе версии')}
+    }else if(rm){ if(s&&s.sha===rm){const r=await gh('DELETE',P(`decks/${id}.json`),{message:'Удалена колода',sha:rm});if(!r.ok&&r.status!==404)await ok(r,'Не удалось удалить');delete S[id]}
+     else {const d=await download(id);store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true} }
     else delete S[id];
    }
    if(!Object.keys(store.decks).length){const d=blankDeck();store.decks[d.id]=d}
-   if(!store.decks[store.current]||!store.decks[deck.id]){deck=store.decks[store.current]||Object.values(store.decks)[0];store.current=deck.id}
-   else deck=store.decks[deck.id];
+   if(!store.decks[store.current]||!store.decks[deck.id]){deck=store.decks[store.current]||Object.values(store.decks)[0];store.current=deck.id}else deck=store.decks[deck.id];
    await saveMeta();
    if(changed){await IDB.set('store',store).catch(()=>{});const typing=document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);if(!typing)render();else renderBench()}
    st.last=Date.now();set('ok');
-  }catch(e){console.error(e);if(e.auth)set('login');else if(e.net&&!e.dl)set('offline');else set('err',e.dl?(e.noProxy?'Нужен посредник для скачивания — см. «Облако»':'Посредник не отвечает — возможно, он недоступен из твоей сети'):e.status===507?'На Яндекс Диске нет места':'Ошибка облака'+(e.status?' ('+e.status+')':''))}
+  }catch(e){console.error(e);if(e.auth)set('login');else if(e.net)set('offline');else set('err',e.status===404?'Репозиторий не найден — проверь GH_REPO и доступ ключа':e.status===403?'Ключу не хватает прав на запись':'Ошибка облака'+(e.status?' ('+e.status+')':''))}
   finally{st.busy=false;if(st.again){st.again=false;setTimeout(run,500)}}
  }
- let t;const schedule=()=>{if(!token())return;clearTimeout(t);t=setTimeout(run,3000)};
- const manual=()=>window.YA_REDIRECT!==true;
- const keyUrl=()=>`https://oauth.yandex.ru/authorize?response_type=token&client_id=${encodeURIComponent(clientId())}&force_confirm=yes`;
- function parseKey(v){v=String(v||'').trim();const m=/access_token=([^&\s#]+)/.exec(v);if(m)return m[1];return v.replace(/^OAuth\s+/i,'').replace(/\s+/g,'')}
- async function connect(raw){
-  const tk=parseKey(raw);if(!tk||tk.length<20)return toast('Это не похоже на ключ. Скопируй всю строку со страницы Яндекса.');
-  ls.set(TK,tk);ls.set(TX,null);set('sync');
-  try{await list()}catch(e){ls.set(TK,null);set('login');return toast(e.auth||e.status===403?'Яндекс не принял ключ. Получи новый и вставь его целиком.':e.net?'Нет связи с Яндексом. Проверь интернет.':'Ошибка проверки ключа'+(e.status?' ('+e.status+')':''))}
-  st.synced={};await saveMeta();toast('Подключено! Колоды синхронизируются с Яндекс Диском');who();await run();startTimers();renderSide()}
- // key locked with a password, stored publicly in config.js (window.YA_LOCKED)
- const b64=u=>btoa(String.fromCharCode(...u)),unb64=t=>Uint8Array.from(atob(t),c=>c.charCodeAt(0));
+ let t;const schedule=()=>{if(!token()||!repo())return;clearTimeout(t);t=setTimeout(run,3000)};
+ // key locked with a password (window.GH_LOCKED in config.js)
+ const b64=u=>btoa(String.fromCharCode(...u)),unb64=x=>Uint8Array.from(atob(x),c=>c.charCodeAt(0));
  async function kdf(pw,salt){const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pw),'PBKDF2',false,['deriveKey']);
   return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:250000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
  async function lockKey(tk,pw){const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
-  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},await kdf(pw,salt),new TextEncoder().encode(tk)));
-  const out=new Uint8Array(28+ct.length);out.set(salt);out.set(iv,16);out.set(ct,28);return b64(out)}
- async function unlockKey(blob,pw){const a=unb64(blob);const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:a.slice(16,28)},await kdf(pw,a.slice(0,16)),a.slice(28));return new TextDecoder().decode(pt)}
- const locked=()=>(window.YA_LOCKED||'').trim();
- async function unlock(pw){if(!pw)return toast('Введи пароль');set('sync');let tk;
-  try{tk=await unlockKey(locked(),pw)}catch(e){set('login');return toast('Неверный пароль')}
-  await connect(tk)}
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},await kdf(pw,salt),new TextEncoder().encode(tk)));const out=new Uint8Array(28+ct.length);out.set(salt);out.set(iv,16);out.set(ct,28);return b64(out)}
+ async function unlockKey(blob,pw){const a=unb64(blob);return new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:a.slice(16,28)},await kdf(pw,a.slice(0,16)),a.slice(28)))}
+ async function check(tk){const r=await gh('GET',`/repos/${repo()}`,null,null,tk);if(r.status===401)throw new Error('GitHub не принял ключ. Скопируй его целиком.');
+  if(r.status===404)throw new Error('Репозиторий «'+repo()+'» не найден или у ключа нет к нему доступа.');await ok(r,'Ошибка GitHub');const j=await r.json();
+  if(j.permissions&&!j.permissions.push)throw new Error('У ключа нет права записи (Contents: Read and write).');if(!j.private)toast('Внимание: репозиторий открытый — колоды видны всем. Сделай его Private.');return j}
+ async function connect(raw){const tk=String(raw||'').trim();if(tk.length<20)return toast('Вставь ключ GitHub целиком (начинается с github_pat_)');
+  set('sync');try{await check(tk)}catch(e){set('login');return toast(e.net?'Нет связи с GitHub':e.message)}
+  ls.set(TK,tk);st.synced={};await saveMeta();toast('Подключено! Колоды синхронизируются с GitHub');await run();startTimers();renderSide()}
+ async function unlock(pw){if(!pw)return false;let tk;try{tk=await unlockKey(locked(),pw)}catch(e){return false}ls.set(TK,tk);return true}
  async function makeLock(pw,pw2){if(!pw||pw.length<4)return toast('Пароль — хотя бы 4 символа');if(pw!==pw2)return toast('Пароли не совпадают');
-  const line=`window.YA_LOCKED = "${await lockKey(token(),pw)}";`;
-  modal(`<h2 class="sec">Строка для config.js</h2><p class="hint">Открой на GitHub файл <b>config.js</b> → карандаш → добавь эту строку <b>второй строкой</b> (первую с ClientID не трогай) → Commit changes.</p><textarea id="exporttext" readonly style="min-height:110px">${esc(line)}</textarea><div class="btns"><button class="btn primary" data-act="copy">Копировать</button><button class="btn" data-act="close">Готово</button></div><p class="hint">После этого на любом новом устройстве достаточно открыть сайт и один раз ввести пароль. Пароль не записан нигде — запомни его.</p>`)}
+  const line=`window.GH_LOCKED = "${await lockKey(token(),pw)}";`;
+  modal(`<h2 class="sec">Строка для config.js</h2><p class="hint">Открой на GitHub файл <b>config.js</b> (в репозитории сайта) → карандаш → добавь эту строку под строкой с GH_REPO → Commit changes.</p><textarea id="exporttext" readonly style="min-height:110px">${esc(line)}</textarea><div class="btns"><button class="btn primary" data-act="copy">Копировать</button><button class="btn" data-act="close">Готово</button></div><p class="hint">После этого сайт будет открываться только по паролю, а на новом устройстве пароль сразу подключит колоды. Пароль нигде не записан — запомни его.</p>`)}
+ function logout(){ls.set(TK,null);st.synced={};saveMeta();set('login');toast('Это устройство отключено от облака. Колоды на нём остались.');if(locked())setTimeout(()=>location.reload(),900)}
  let timers=false;function startTimers(){if(timers)return;timers=true;
-  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')run()});
-  setInterval(()=>{if(document.visibilityState==='visible')run()},120000)}
- function login(){const id=clientId();if(!id)return toast('Сначала впиши ClientID в файл config.js — см. инструкцию в разделе «Облако»');
-  const state=Math.random().toString(36).slice(2);try{sessionStorage.setItem('ya.state',state)}catch(e){}
-  location.href=`https://oauth.yandex.ru/authorize?response_type=token&client_id=${encodeURIComponent(id)}&redirect_uri=${encodeURIComponent(redirect())}&state=${state}&force_confirm=yes`}
- function logout(silent){ls.set(TK,null);ls.set(TX,null);st.user='';st.synced={};saveMeta();set(clientId()?'login':'off');if(!silent)toast('Ты вышел из Яндекса. Колоды остались на этом устройстве.')}
- function catchRedirect(){
-  if(!location.hash||location.hash.indexOf('access_token=')<0&&location.hash.indexOf('error=')<0)return;
-  const p=new URLSearchParams(location.hash.slice(1));let ok=true;try{const s=sessionStorage.getItem('ya.state');if(s&&p.get('state')&&p.get('state')!==s)ok=false}catch(e){}
-  history.replaceState(null,'',location.pathname+location.search);
-  if(p.get('error')){setTimeout(()=>toast('Вход через Яндекс отменён'),300);return}
-  if(ok&&p.get('access_token')){ls.set(TK,p.get('access_token'));const ex=+p.get('expires_in');ls.set(TX,ex?String(Date.now()+ex*1000):null);st.justIn=true}
- }
- async function who(){try{const j=await json('GET','/',{fields:'user.display_name,user.login,total_space,used_space'});st.user=(j.user&&(j.user.display_name||j.user.login))||'';st.space=[j.used_space,j.total_space];paint()}catch(e){}}
- async function init(){if(!available())return;catchRedirect();await loadMeta();
-  if(!token()&&(window.YA_TOKEN||'').trim()){ls.set(TK,window.YA_TOKEN.trim());ls.set(TX,null)}
-  if(!token()){set(clientId()?'login':'off');return}
-  who();await run();if(st.justIn){st.justIn=false;toast('Готово: колоды синхронизируются с Яндекс Диском')}
-  startTimers()}
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')run()});setInterval(()=>{if(document.visibilityState==='visible')run()},120000)}
+ // password gate for the whole site
+ const gateNeeded=()=>available()&&!!repo()&&!!locked()&&!token();
+ function showGate(){document.documentElement.classList.add('locked');const g=document.createElement('div');g.id='gate';
+  g.innerHTML=`<form class="gbox" autocomplete="on"><div class="glogo">◆</div><h1>Студия колод</h1><p>Введи пароль, чтобы открыть студию.</p><input type="password" id="gate-pw" autocomplete="current-password" placeholder="Пароль" required><button class="btn primary" type="submit">Открыть</button><p class="gerr" id="gate-err" hidden>Неверный пароль</p></form>`;
+  document.body.appendChild(g);const f=g.querySelector('form');setTimeout(()=>g.querySelector('input').focus(),50);
+  f.addEventListener('submit',async ev=>{ev.preventDefault();const b=f.querySelector('button');b.textContent='Проверяю…';b.disabled=true;
+   if(await unlock(f.querySelector('input').value)){g.remove();document.documentElement.classList.remove('locked');await window.storeReady;await loadMeta();await run();startTimers()}
+   else{$('#gate-err').hidden=false;b.textContent='Открыть';b.disabled=false;f.querySelector('input').select()}})}
+ async function init(){if(!available()||!repo())return;await loadMeta();if(gateNeeded())return;if(!token()){set('login');return}await run();startTimers()}
  function panel(){
-  if(!clientId())return `<div class="form"><p class="hint">Облако ещё не настроено. Это делается один раз:</p>
-   <ol class="steps"><li>Открой <b>oauth.yandex.ru</b> → «Создать» → <b>«Для доступа к API или отладки»</b>, название «Студия колод».</li>
-   <li>Доступы: «Яндекс Диск REST API» → <b>Доступ к папке приложения на Диске</b> и <b>Доступ к информации о Диске</b>.</li>
-   <li>Скопируй <b>ClientID</b> и впиши его в файл <b>config.js</b> на GitHub.</li></ol></div>`;
-  if(!token()&&locked())return `<div class="form"><p class="hint">Вход уже настроен. На этом устройстве нужно один раз ввести твой пароль студии — дальше он не понадобится.</p>
-   <label class="field"><span>Пароль студии</span><input type="password" id="ya-pw" autocomplete="current-password"></label>
-   <button class="btn primary" data-act="ya-unlock">Войти</button>
-   <details class="item"><summary>Забыл пароль</summary><div class="form"><p class="hint">Удали строку YA_LOCKED из config.js на GitHub и подключи Яндекс Диск заново через ключ.</p></div></details></div>`;
-  if(!token()&&manual())return `<div class="form"><p class="hint">Колоды будут храниться в папке «Приложения» на твоём Яндекс Диске и появятся на всех устройствах, где ты подключишь ключ.</p>
-   <div class="field"><span>Шаг 1</span><a class="btn primary" href="${esc(keyUrl())}" target="_blank" rel="noopener" style="text-align:center;text-decoration:none;padding:11px">Получить ключ в Яндексе</a>
-   <p class="hint">Откроется Яндекс → «Разрешить» → на странице будет ключ (длинная строка). Нажми рядом «Скопировать».</p></div>
-   <label class="field"><span>Шаг 2 · вставь ключ</span><input type="text" id="ya-key" placeholder="y0_AgAAAA…" autocomplete="off"></label>
-   <button class="btn primary" data-act="ya-connect">Подключить Яндекс Диск</button>
-   <p class="hint">Ключ даёт доступ только к папке студии на Диске. Не пересылай его другим людям.</p></div>`;
-  return `<div class="form"><div class="stat ok"><span>${esc(st.user||'Яндекс Диск')}<br><small style="color:var(--muted)">${st.space?`Занято ${mb(st.space[0])} из ${mb(st.space[1])}`:'Подключено'}</small></span><b>☁</b></div>
-   ${chip()}
-   ${proxy()?'':'<div class="bh warn" style="margin:0"><b>!</b><span>Скачивание колод с Диска на другие устройства не включено: нужен посредник (Cloudflare Worker). Пока колоды только сохраняются на Диск.</span></div>'}
-   <button class="btn primary" data-act="ya-sync">Синхронизировать сейчас</button>
-   <p class="hint">Изменения уходят на Диск сами через несколько секунд. Когда открываешь студию на другом устройстве, колоды подтягиваются автоматически. Файлы лежат на Диске в папке «Приложения».</p>
-   ${manual()?(locked()?'<p class="hint">Вход по паролю для всех устройств включён.</p>':`<details class="item"><summary>Вход на всех устройствах по паролю</summary><div class="form"><p class="hint">Придумай пароль — студия зашифрует им ключ. Строку положишь в config.js, и на телефоне и других ПК хватит один раз ввести пароль.</p>
-    <label class="field"><span>Пароль</span><input type="password" id="ya-np1" autocomplete="new-password"></label><label class="field"><span>Ещё раз</span><input type="password" id="ya-np2" autocomplete="new-password"></label>
-    <button class="btn primary" data-act="ya-lock">Создать строку для config.js</button></div></details>`):''}
-   <button class="btn danger" data-act="ya-logout">Выйти из Яндекса</button></div>`}
- async function publish(id){await run();const p=`${DIR}/${id}.json`;let r=await api('PUT','/resources/publish',{path:p});if(!r.ok&&r.status!==409)throw new Error('Яндекс не опубликовал файл ('+r.status+')');
-  const m=await json('GET','/resources',{path:p,fields:'public_key,public_url'});if(!m.public_key)throw new Error('Нет публичной ссылки');return redirect()+'?d='+encodeURIComponent(m.public_key)}
- async function unpublish(id){await api('PUT','/resources/unpublish',{path:`${DIR}/${id}.json`})}
- async function fetchPublic(key){const u=new URL(API+'/public/resources/download');u.searchParams.set('public_key',key);const r=await fetch(u);if(!r.ok)throw new Error('public '+r.status);const {href}=await r.json();const f=await grab(href);if(!f.ok)throw new Error('dl '+f.status);return f.json()}
- return{available,init,run,schedule,login,logout,panel,connect,publish,unpublish,fetchPublic,unlock,makeLock,chip,hashDeck,seedSig,state:st}
+  if(!repo())return `<div class="form"><p class="hint">Облако ещё не настроено. Колоды будут храниться в твоём <b>закрытом</b> репозитории на GitHub и появятся на всех устройствах.</p><ol class="steps">
+   <li>Создай на GitHub закрытый (Private) репозиторий, например <b>studio-data</b>, с галочкой «Add a README file».</li>
+   <li>Впиши его в <b>config.js</b> сайта: <code class="sel">window.GH_REPO = "твой-логин/studio-data";</code></li>
+   <li>Создай ключ (Fine-grained token) с доступом только к этому репозиторию и правом <b>Contents: Read and write</b>.</li></ol></div>`;
+  if(!token())return `<div class="form"><p class="hint">Хранилище: <b>${esc(repo())}</b>. Вставь ключ GitHub — один раз на этом устройстве.</p>
+   <label class="field"><span>Ключ GitHub</span><input type="password" id="gh-key" placeholder="github_pat_…" autocomplete="off"></label>
+   <button class="btn primary" data-act="gh-connect">Подключить</button><p class="hint">Ключ хранится только на этом устройстве. Не пересылай его другим людям.</p></div>`;
+  return `<div class="form"><div class="stat ok"><span>${esc(repo())}<br><small style="color:var(--muted)">Закрытый репозиторий GitHub</small></span><b>☁</b></div>
+   ${chip()}<button class="btn primary" data-act="gh-sync">Синхронизировать сейчас</button>
+   <p class="hint">Изменения уходят в облако сами через несколько секунд. На другом устройстве колоды подтягиваются при открытии студии. Картинки хранятся по одной копии, поэтому правка текста почти не занимает места.</p>
+   ${locked()?'<p class="hint">Вход по паролю включён: сайт открывается только по паролю.</p>':`<details class="item" open><summary>Пароль на сайт и вход с других устройств</summary><div class="form"><p class="hint">Придумай пароль. Студия зашифрует им ключ, а строку ты положишь в config.js. После этого сайт будет открываться только по паролю, а на телефоне хватит один раз ввести пароль.</p>
+    <label class="field"><span>Пароль</span><input type="password" id="gh-np1" autocomplete="new-password"></label><label class="field"><span>Ещё раз</span><input type="password" id="gh-np2" autocomplete="new-password"></label>
+    <button class="btn primary" data-act="gh-lock">Создать строку для config.js</button></div></details>`}
+   <button class="btn danger" data-act="gh-logout">Отключить это устройство</button></div>`}
+ return{available,init,run,schedule,logout,panel,connect,makeLock,chip,hashDeck,seedSig,gateNeeded,showGate,state:st}
 })();
 
 // ---------- files: PDF, PNG, JSON ----------
@@ -3840,7 +3805,9 @@ async function exportPng(btn){
 try{document.fonts.addEventListener('loadingdone',()=>{const b=$('#bench');if(b)fitText(b)})}catch(e){}
 addEventListener('beforeprint',()=>{const pr=$('#print');pr.classList.add('rendering');fitSlots(pr);pr.classList.remove('rendering')});
 $('#side').innerHTML='<p class="hint" style="padding:8px">Загружаю колоды…</p>';
-loadStore().then(async()=>{for(const d of Object.values(store.decks))if(d._seed===1)d._seed=Cloud.seedSig(d);if(Object.keys(store.decks).length>1)section='decks';render();try{const k=new URLSearchParams(location.search).get('d');if(k&&Cloud.available())openShared(k)}catch(e){}await Cloud.init();if(Object.keys(store.decks).length>1&&!section){section='decks';render()}});
+if(Cloud.gateNeeded())Cloud.showGate();
+window.storeReady=loadStore();
+window.storeReady.then(async()=>{for(const d of Object.values(store.decks))if(d._seed===1)d._seed=Cloud.seedSig(d);if(Object.keys(store.decks).length>1)section='decks';render();await Cloud.init();if(Object.keys(store.decks).length>1&&!section){section='decks';render()}});
 </script>
 
 </html>
