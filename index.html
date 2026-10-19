@@ -3345,6 +3345,7 @@ function renderSide(){
    <button class="btn primary" data-act="new" style="padding:12px;font-size:14px">+ Новая колода</button>
    <div class="btns"><button class="btn" data-act="import">Импорт JSON</button><button class="btn" data-act="sample">Пример (Хищник)</button></div>
    ${canSave()?'<button class="btn" data-act="dlall">Скачать все колоды (резервная копия)</button>':''}
+   <button class="btn" data-act="dedupe">Убрать одинаковые копии</button>
    <p class="hint">Нажми на колоду справа, чтобы открыть её и редактировать. Удаление спрашивает подтверждение.</p>
    <div class="stat" id="stinfo"><span>Колод: ${Object.keys(store.decks).length}<br><small style="color:var(--muted)">Занято на этом устройстве</small></span><b style="font-size:14px">…</b></div></div>`;
   storageInfo().then(i=>{const el=document.getElementById('stinfo');if(!el)return;const b=el.querySelector('b');b.textContent=i&&i.quota?`${mb(i.used)} из ${mb(i.quota)}`:(storageMode==='ls'?'до 5 МБ':'—')})}
@@ -3476,6 +3477,10 @@ document.addEventListener('click',async e=>{
  if(a==='del'){delete store.decks[deck.id];const rest=Object.values(store.decks);deck=rest[0]||blankDeck();store.decks[deck.id]=deck;store.current=deck.id;save();toast('Колода удалена');return render()}
  if(a==='export'){const j=JSON.stringify(deck);const local=canSave();modal(`<h2 class="sec">Экспорт колоды</h2><p class="hint">${local?'Скачай колоду файлом .json — так она не потеряется, даже если очистить браузер.':'Скопируй текст и сохрани в файл .json — потом его можно импортировать на любом устройстве.'}</p><textarea id="exporttext" readonly>${esc(j)}</textarea><div class="btns">${local?'<button class="btn primary" data-act="dl">Скачать файл колоды</button><button class="btn" data-act="dlall">Скачать все колоды</button>':''}<button class="btn${local?'':' primary'}" data-act="copy">Копировать</button><button class="btn" data-act="close">Закрыть</button></div>`);return}
  if(a==='pdf')return makePdf(t);
+ if(a==='dedupe'){const list=Object.values(store.decks).sort((x,y)=>(/\(с этого устройства\)|\(копия\)/.test(x.name)?1:0)-(/\(с этого устройства\)|\(копия\)/.test(y.name)?1:0));const keep=[],gone=[];
+  for(const d of list){if(keep.some(k=>Cloud.sameDeck(k,d)))gone.push(d);else keep.push(d)}
+  if(!gone.length)return toast('Одинаковых копий не найдено');gone.forEach(d=>delete store.decks[d.id]);if(!store.decks[deck.id]){deck=keep[0];store.current=deck.id}
+  save();render();return toast('Удалено одинаковых копий: '+gone.length+'. Из облака они тоже удалятся.')}
  if(a==='tts')return exportTTS(t);
  if(a==='snap'){snapshot(deck,'Сохранено вручную').then(historyPanel);return toast('Версия сохранена')}
  if(a==='shared-save'){const d=JSON.parse(JSON.stringify(window._sharedDeck));d.id='d'+Date.now();delete d._seed;store.decks[d.id]=d;deck=d;store.current=d.id;save();closeModal();section='decks';render();return toast('Колода «'+d.name+'» сохранена в твои колоды')}
@@ -3637,6 +3642,7 @@ const Cloud=(()=>{
  const hashDeck=d=>fnv(JSON.stringify(d,(k,v)=>k&&k[0]==='_'?undefined:v));
  const seedSig=d=>fnv(JSON.stringify([d.name,d.author,d.hero,d.sidekicks,d.rules,d.actions,d.tokens,d.cover]));
  const isSeed=d=>d&&d._seed&&seedSig(d)===d._seed;
+ const sameDeck=(a,b)=>seedSig({...a,name:''})===seedSig({...b,name:''});
  function set(status,msg){st.status=status;st.msg=msg||'';paint()}
  function paint(){document.querySelectorAll('[data-cloud-chip]').forEach(el=>{el.innerHTML=chip()});if(section==='cloud'&&!document.activeElement?.closest?.('#side'))renderSide()}
  function chip(){if(!available()||!repo())return'';const t=new Date(st.last).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
@@ -3689,8 +3695,10 @@ const Cloud=(()=>{
      if(!rm){ if(s&&!dirty){delete store.decks[id];delete S[id];changed=true} else {S[id]={hash:h,sha:await upload(L,have,null)}} }
      else if(dirty&&!rch){S[id]={hash:h,sha:await upload(L,have,rm)}}
      else if(!dirty&&rch){const d=await download(id);store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true}
-     else if(dirty&&rch){const d=await download(id);const mine=JSON.parse(JSON.stringify(L));mine.id='d'+Date.now()+Math.random().toString(36).slice(2,6);mine.name=L.name+' (с этого устройства)';
-      store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};store.decks[mine.id]=mine;S[mine.id]={hash:hashDeck(mine),sha:await upload(mine,have,null)};changed=true;toast('Колода «'+L.name+'» менялась на двух устройствах — сохранены обе версии')}
+     else if(dirty&&rch){const d=await download(id);
+      if(sameDeck(L,d)){store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true}
+      else{const mine=JSON.parse(JSON.stringify(L));mine.id='d'+Date.now()+Math.random().toString(36).slice(2,6);mine.name=L.name+' (с этого устройства)';
+       store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};store.decks[mine.id]=mine;S[mine.id]={hash:hashDeck(mine),sha:await upload(mine,have,null)};changed=true;toast('Колода «'+L.name+'» менялась на двух устройствах — сохранены обе версии')}}
     }else if(rm){ if(s&&s.sha===rm){const r=await gh('DELETE',P(`decks/${id}.json`),{message:'Удалена колода',sha:rm});if(!r.ok&&r.status!==404)await ok(r,'Не удалось удалить');delete S[id]}
      else {const d=await download(id);store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true} }
     else delete S[id];
@@ -3730,9 +3738,10 @@ const Cloud=(()=>{
   g.innerHTML=`<form class="gbox" autocomplete="on"><div class="glogo">◆</div><h1>Студия колод</h1><p>Введи пароль, чтобы открыть студию.</p><input type="password" id="gate-pw" autocomplete="current-password" placeholder="Пароль" required><button class="btn primary" type="submit">Открыть</button><p class="gerr" id="gate-err" hidden>Неверный пароль</p></form>`;
   document.body.appendChild(g);const f=g.querySelector('form');setTimeout(()=>g.querySelector('input').focus(),50);
   f.addEventListener('submit',async ev=>{ev.preventDefault();const b=f.querySelector('button');b.textContent='Проверяю…';b.disabled=true;
-   if(await unlock(f.querySelector('input').value)){g.remove();document.documentElement.classList.remove('locked');await window.storeReady;await loadMeta();await run();startTimers()}
+   if(await unlock(f.querySelector('input').value)){g.remove();document.documentElement.classList.remove('locked');await window.storeReady;await ensureMeta();await run();startTimers()}
    else{$('#gate-err').hidden=false;b.textContent='Открыть';b.disabled=false;f.querySelector('input').select()}})}
- async function init(){if(!available()||!repo())return;await loadMeta();if(gateNeeded())return;if(!token()){set('login');return}await run();startTimers()}
+ let metaLoaded=false;async function ensureMeta(){if(!metaLoaded){metaLoaded=true;await loadMeta()}}
+ async function init(){if(!available()||!repo())return;await ensureMeta();if(gateNeeded())return;if(!token()){set('login');return}await run();startTimers()}
  function panel(){
   if(!repo())return `<div class="form"><p class="hint">Облако ещё не настроено. Колоды будут храниться в твоём <b>закрытом</b> репозитории на GitHub и появятся на всех устройствах.</p><ol class="steps">
    <li>Создай на GitHub закрытый (Private) репозиторий, например <b>studio-data</b>, с галочкой «Add a README file».</li>
@@ -3748,7 +3757,7 @@ const Cloud=(()=>{
     <label class="field"><span>Пароль</span><input type="password" id="gh-np1" autocomplete="new-password"></label><label class="field"><span>Ещё раз</span><input type="password" id="gh-np2" autocomplete="new-password"></label>
     <button class="btn primary" data-act="gh-lock">Создать строку для config.js</button></div></details>`}
    <button class="btn danger" data-act="gh-logout">Отключить это устройство</button></div>`}
- return{available,init,run,schedule,logout,panel,connect,makeLock,chip,hashDeck,seedSig,gateNeeded,showGate,state:st}
+ return{available,init,run,schedule,logout,panel,connect,makeLock,chip,hashDeck,seedSig,sameDeck,gateNeeded,showGate,state:st}
 })();
 
 // ---------- files: PDF, PNG, JSON ----------
