@@ -3211,7 +3211,7 @@ function heroCard(){
  </div></div>`}
 
 function ruleCard(r,i){return `<div class="card rule" data-edit="rules:${i}"><div class="inner"><div class="rt fit">${esc(r.title)}</div><div class="rx fitb">${rich(r.text)}</div></div></div>`}
-function coverCard(){const c=deck.cover;return `<div class="card cover" data-edit="cover"><div class="inner">${c.image?artImg(c.image,c.crop):genBack()}<div class="lab">${esc(c.label||deck.name)}${deck.author?`<small>${esc(deck.author)}</small>`:''}</div></div></div>`}
+function coverCard(){const c=deck.cover;return `<div class="card cover" data-edit="cover"><div class="inner">${c.image?artImg(c.image,c.crop):genBack()}${c.hideLabel?'':`<div class="lab">${esc(c.label||deck.name)}${deck.author?`<small>${esc(deck.author)}</small>`:''}</div>`}</div></div>`}
 const TOKSIZE={s:{n:'Маленький · 20 мм',mm:20},m:{n:'Обычный · 26 мм',mm:26},l:{n:'Большой · 35 мм',mm:35},xl:{n:'Для бойца · 45 мм',mm:45}};
 const tokMM=t=>(TOKSIZE[t.size]||TOKSIZE.m).mm;
 function tokenFace(t,i){const k=tokMM(t)/26;return `<div class="tokwrap"><div class="token" data-edit="tokens:${i}" style="--tk:${k}"><div class="face">${t.image?artImg(t.image,t.crop):esc(t.name)}</div>${t.value!==''&&t.value!=null?`<div class="tv">${esc(t.value)}</div>`:''}</div><small>${esc(t.name)} ×${esc(t.qty)}</small></div>`}
@@ -3392,7 +3392,7 @@ function renderSide(){
     <ol class="steps"><li>В TTS: <b>Objects → Components → Custom → Deck</b>.</li><li>Face — файл «лицевые», Back — «рубашка».</li><li>Width <b>10</b>, Height и Number — числа из названия файла (например 10x3, 30).</li></ol></div></details>
    <div class="field"><span>Как печатать PDF</span><ol class="steps"><li>Масштаб — <b>100%</b> или «Фактический размер», не «Подогнать по странице».</li><li>Двусторонняя печать — переворот <b>по длинному краю</b>.</li><li>Без двусторонней печати: сначала нечётные листы, затем вставь их обратно и допечатай рубашки.</li></ol></div>
    <p class="hint">Карты печатаются в размере 63×88 мм, как настоящие. Пунктир — линия реза. Для двусторонней печати выбери переворот по длинному краю.</p></div>`}
- if(section==='cover')body=`<div class="form">${F.img('Картинка рубашки','cover.image',deck.cover.image)}${cropFields('cover.',deck.cover)}${deck.cover.image?'<p class="hint">Убери картинку, чтобы включить сгенерированную рубашку.</p>':F.sel('Узор сгенерированной рубашки','cover.pattern',deck.cover.pattern||'rays',Object.entries(PATTERNS))}<button class="btn sm" data-prompt="cover">✦ Промпт для рубашки в Midjourney</button>${F.text('Надпись на ярлыке','cover.label',deck.cover.label)}<p class="hint">Лучше вертикальная картинка 63×88 (например 630×880 px).</p></div>`;
+ if(section==='cover')body=`<div class="form"><div class="checks"><label><input type="checkbox" id="cv-lab" data-cvlab${deck.cover.hideLabel?'':' checked'}> <span>Надпись на рубашке<br><small class="hint">Ярлык с названием колоды и автором${deck.cover.image?'':', а на сгенерированной рубашке — ещё и название внизу'}</small></span></label></div>${F.img('Картинка рубашки','cover.image',deck.cover.image)}${cropFields('cover.',deck.cover)}${deck.cover.image?'<p class="hint">Убери картинку, чтобы включить сгенерированную рубашку.</p>':F.sel('Узор сгенерированной рубашки','cover.pattern',deck.cover.pattern||'rays',Object.entries(PATTERNS))}<button class="btn sm" data-prompt="cover">✦ Промпт для рубашки в Midjourney</button>${F.text('Надпись на ярлыке','cover.label',deck.cover.label)}<p class="hint">Лучше вертикальная картинка 63×88 (например 630×880 px).</p></div>`;
  if(section==='hero'){const h=deck.hero;body=`<div class="form">${F.text('Имя героя','hero.name',h.name)}${F.sel('Атака','hero.attack',h.attack,ATK)}<div class="row">${F.num('Здоровье','hero.health',h.health)}${F.num('Перемещение','hero.move',h.move)}</div>${F.area('Особая способность','hero.ability',h.ability,'**Название.** Описание…')}${boldHint}${F.area('Описание героя для артов (по-английски)','artDesc',deck.artDesc||'','Ryuk, shinigami from Death Note, tall and lanky, spiky black hair, huge toothy grin')}<p class="hint">Из этого описания и стиля колоды собираются промпты для Midjourney.</p></div>`}
  if(section==='sidekicks')body=itemList('sidekicks','помощник',null,(it,i)=>`${F.text('Имя','sidekicks.'+i+'.name',it.name)}${F.sel('Атака','sidekicks.'+i+'.attack',it.attack,ATK)}<div class="row">${F.num('Здоровье','sidekicks.'+i+'.health',it.health)}${F.num('Количество','sidekicks.'+i+'.qty',it.qty)}</div>${F.text('Описание для артов (по-английски)','sidekicks.'+i+'.artDesc',it.artDesc||'')}`,it=>`${esc(it.name)}<span class="q">${it.health} ОЗ ×${it.qty}</span>`);
  if(section==='rules')body=itemList('rules','карта правил',null,(it,i)=>`${F.text('Заголовок','rules.'+i+'.title',it.title)}${F.area('Текст','rules.'+i+'.text',it.text)}${boldHint}`,it=>esc(it.title));
@@ -3449,6 +3449,7 @@ document.addEventListener('input',e=>{
 });
 document.addEventListener('change',async e=>{
  const t=e.target;
+ if(t.dataset.cvlab!==undefined){deck.cover.hideLabel=!t.checked;save();return renderBench()}
  if(t.dataset.rerender!==undefined){const det=t.closest('details');if(det)openItem=det.id.slice(3).replace('-',':');renderSide()}
  if(t.id==='deckpick'){deck=store.decks[t.value];store.current=deck.id;save();render()}
  if(t.dataset.img){const f=t.files[0];if(!f)return;try{setP(t.dataset.img,await resizeImage(f));const det=t.closest('details');if(det)openItem=det.id.slice(3).replace('-',':');save();render()}catch(err){toast('Не удалось прочитать картинку')}}
@@ -3515,7 +3516,7 @@ function artImg(src,crop){const c=cropOf({crop}),fit=crop&&crop.fit?'contain':'c
 const PATTERNS={rays:'Лучи',diamonds:'Ромбы',rings:'Круги',stars:'Звёзды',plain:'Без узора'};
 function genBack(){const L=Object.assign({},LOOK0,deck.look),p=deck.cover.pattern||'rays',name=(deck.hero&&deck.hero.name)||deck.name||'';
  const mono=name.trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'?';
- return `<div class="gback gb-${p}" style="--g1:${L.char};--g2:${L.panel};--g3:${L.border}"><div class="gframe"></div><div class="gemb"><span>${esc(mono)}</span></div><div class="gname">${esc(deck.name)}</div></div>`}
+ return `<div class="gback gb-${p}" style="--g1:${L.char};--g2:${L.panel};--g3:${L.border}"><div class="gframe"></div><div class="gemb"><span>${esc(mono)}</span></div>${deck.cover.hideLabel?'':`<div class="gname">${esc(deck.name)}</div>`}</div>`}
 const ART_STYLE={
  'Хищник':'gritty jungle sci-fi, metallic textures, warm amber highlights','Тетрадь смерти':'dark gothic manga style, ink and crosshatching, moody shadows',
  'Киберпанк':'cyberpunk, neon cyan and magenta lights, rainy city','Фэнтези':'epic high fantasy oil painting, golden light','Вестерн':'wild west, dusty desert, sepia film grain',
