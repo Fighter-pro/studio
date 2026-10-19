@@ -3660,7 +3660,10 @@ const Cloud=(()=>{
  async function tree(){const r=await gh('GET',`/repos/${repo()}/git/trees/HEAD?recursive=1`);if(r.status===409)return[];
   await ok(r,'Не удалось прочитать репозиторий');return((await r.json()).tree||[]).filter(x=>x.type==='blob')}
  const b64utf8=s=>{const u=new TextEncoder().encode(s);let o='';for(let i=0;i<u.length;i+=32768)o+=String.fromCharCode(...u.subarray(i,i+32768));return btoa(o)};
- async function putFile(path,b64,sha,msg){const r=await gh('PUT',P(path),{message:msg,content:b64,...(sha?{sha}:{})});await ok(r,'Не удалось сохранить');return(await r.json()).content.sha}
+ async function putFile(path,b64,sha,msg){for(let i=0;;i++){const r=await gh('PUT',P(path),{message:msg,content:b64,...(sha?{sha}:{})});
+  if(r.status===409&&!sha&&i<3){await new Promise(z=>setTimeout(z,900*(i+1)));continue}
+  if(r.status===422&&!sha&&path.startsWith('images/'))return null;
+  await ok(r,'Не удалось сохранить');return(await r.json()).content.sha}}
  async function rawText(path){const r=await gh('GET',P(path),null,'application/vnd.github.raw+json');await ok(r,'Не удалось скачать');return r.text()}
  async function rawDataURL(path,mime){const r=await gh('GET',P(path),null,'application/vnd.github.raw+json');await ok(r,'Не удалось скачать картинку');const b=await r.blob();
   return new Promise((res,rej)=>{const f=new FileReader();f.onload=()=>res(String(f.result).replace(/^data:[^;]*;/,`data:${mime};`));f.onerror=rej;f.readAsDataURL(b)})}
@@ -3681,6 +3684,12 @@ const Cloud=(()=>{
  async function loadMeta(){try{st.synced=(IDB.db&&await IDB.get('ghsync'))||{}}catch(e){st.synced={}}}
  async function saveMeta(){try{IDB.db&&await IDB.set('ghsync',st.synced)}catch(e){}}
  async function upload(L,have,sha){const c=await toRemote(L,have);return putFile(`decks/${L.id}.json`,b64utf8(JSON.stringify(c)),sha,'Колода «'+L.name+'»')}
+ async function remoteSha(path){const r=await gh('GET',P(path));if(r.status===404)return null;await ok(r,'Не удалось проверить файл');return(await r.json()).sha}
+ async function push(L,have,sha,s){
+  try{return{sha:await upload(L,have,sha)}}catch(e){if(e.status!==409&&e.status!==422)throw e}
+  const cur=await remoteSha(`decks/${L.id}.json`);if(!cur)return{sha:await upload(L,have,null)};
+  const d=await download(L.id);if(s&&hashDeck(d)!==s.hash&&!sameDeck(d,L))return{conflict:d,sha:cur};
+  return{sha:await upload(L,have,cur)}}
  async function download(id){const c=JSON.parse(await rawText(`decks/${id}.json`));c.id=id;return fromRemote(c)}
  async function run(){
   if(!repo()){set('off');return}if(!token()){set('login');return}
@@ -3688,19 +3697,21 @@ const Cloud=(()=>{
   try{
    const files=await tree(),R={},have=new Set();files.forEach(f=>{have.add(f.path);const m=/^decks\/(.+)\.json$/.exec(f.path);if(m)R[m[1]]=f.sha});
    const S=st.synced,first=!Object.keys(S).length;
+   const keepBoth=async(L,d,rsha)=>{const id=L.id,mine=JSON.parse(JSON.stringify(L));mine.id='d'+Date.now()+Math.random().toString(36).slice(2,6);mine.name=L.name+' (с этого устройства)';
+    d.id=id;store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rsha};store.decks[mine.id]=mine;S[mine.id]={hash:hashDeck(mine),sha:await upload(mine,have,null),t:Date.now()};
+    toast('Колода «'+L.name+'» менялась на двух устройствах — сохранены обе версии')};
    if(first&&Object.keys(R).length)for(const d of Object.values(store.decks))if(isSeed(d)){delete store.decks[d.id];changed=true}
    for(const id of new Set([...Object.keys(store.decks),...Object.keys(R),...Object.keys(S)])){
     const L=store.decks[id],rm=R[id],s=S[id];
     if(isSeed(L)&&!rm)continue;
-    if(L){const h=hashDeck(L),dirty=!s||s.hash!==h,rch=rm&&(!s||s.sha!==rm);
-     if(!rm){ if(s&&!dirty){delete store.decks[id];delete S[id];changed=true} else {S[id]={hash:h,sha:await upload(L,have,null)}} }
-     else if(dirty&&!rch){S[id]={hash:h,sha:await upload(L,have,rm)}}
+    if(L){const h=hashDeck(L),dirty=!s||s.hash!==h,fresh=s&&s.t&&Date.now()-s.t<180000,rch=rm&&(!s||s.sha!==rm)&&!fresh;
+     if(!rm){ if(s&&!dirty&&!fresh){delete store.decks[id];delete S[id];changed=true} else if(dirty){const p=await push(L,have,s&&s.sha,s);if(p.conflict){await keepBoth(L,p.conflict,p.sha);changed=true}else S[id]={hash:h,sha:p.sha,t:Date.now()}} }
+     else if(dirty&&!rch){const p=await push(L,have,fresh?s.sha:rm,s);if(p.conflict){await keepBoth(L,p.conflict,p.sha);changed=true}else S[id]={hash:h,sha:p.sha,t:Date.now()}}
      else if(!dirty&&rch){const d=await download(id);store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true}
      else if(dirty&&rch){const d=await download(id);
       if(sameDeck(L,d)){store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true}
-      else{const mine=JSON.parse(JSON.stringify(L));mine.id='d'+Date.now()+Math.random().toString(36).slice(2,6);mine.name=L.name+' (с этого устройства)';
-       store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};store.decks[mine.id]=mine;S[mine.id]={hash:hashDeck(mine),sha:await upload(mine,have,null)};changed=true;toast('Колода «'+L.name+'» менялась на двух устройствах — сохранены обе версии')}}
-    }else if(rm){ if(s&&s.sha===rm){const r=await gh('DELETE',P(`decks/${id}.json`),{message:'Удалена колода',sha:rm});if(!r.ok&&r.status!==404)await ok(r,'Не удалось удалить');delete S[id]}
+      else{await keepBoth(L,d,rm);changed=true}}
+    }else if(rm){ if(s&&s.sha===rm){let r=await gh('DELETE',P(`decks/${id}.json`),{message:'Удалена колода',sha:rm});if(r.status===409||r.status===422){const cur=await remoteSha(`decks/${id}.json`);r=cur?await gh('DELETE',P(`decks/${id}.json`),{message:'Удалена колода',sha:cur}):{ok:true}}if(!r.ok&&r.status!==404)await ok(r,'Не удалось удалить');delete S[id]}
      else {const d=await download(id);store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true} }
     else delete S[id];
    }
