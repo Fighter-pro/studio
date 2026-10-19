@@ -3670,8 +3670,11 @@ const Cloud=(()=>{
   let r;try{r=await fetch(href,{method:method||'PUT',body:new Blob([JSON.stringify(d)],{type:'application/octet-stream'})})}catch(e){throw Object.assign(new Error('net'),{net:true})}
   if(!r.ok&&r.status!==201&&r.status!==202)throw Object.assign(new Error('upload'),{status:r.status});
   const meta=await json('GET','/resources',{path:p,fields:'modified'});return meta.modified}
+ const proxy=()=>(window.YA_PROXY||'').trim().replace(/\/+$/,'');
+ const viaProxy=href=>proxy()?`${proxy()}/?u=${encodeURIComponent(href)}`:href;
+ async function grab(href){try{return await fetch(viaProxy(href))}catch(e){throw Object.assign(new Error(proxy()?'Посредник не ответил':'Яндекс не отдал файл колоды'),{net:true,dl:true,noProxy:!proxy()})}}
  async function download(name){const {href}=await json('GET','/resources/download',{path:`${DIR}/${name}`});
-  let r;try{r=await fetch(href)}catch(e){throw Object.assign(new Error('Яндекс не отдал файл колоды'),{net:true,dl:true})}
+  const r=await grab(href);
   if(!r.ok)throw Object.assign(new Error('download'),{status:r.status});return r.json()}
  const del=name=>api('DELETE','/resources',{path:`${DIR}/${name}`,permanently:'true'});
  async function loadMeta(){try{st.synced=(IDB.db&&await IDB.get('sync'))||{}}catch(e){st.synced={}}}
@@ -3704,7 +3707,7 @@ const Cloud=(()=>{
    await saveMeta();
    if(changed){await IDB.set('store',store).catch(()=>{});const typing=document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);if(!typing)render();else renderBench()}
    st.last=Date.now();set('ok');
-  }catch(e){console.error(e);if(e.auth)set('login');else if(e.net&&!e.dl)set('offline');else set('err',e.dl?'Яндекс не отдал файл колоды':e.status===507?'На Яндекс Диске нет места':'Ошибка облака'+(e.status?' ('+e.status+')':''))}
+  }catch(e){console.error(e);if(e.auth)set('login');else if(e.net&&!e.dl)set('offline');else set('err',e.dl?(e.noProxy?'Нужен посредник для скачивания — см. «Облако»':'Посредник для скачивания не ответил'):e.status===507?'На Яндекс Диске нет места':'Ошибка облака'+(e.status?' ('+e.status+')':''))}
   finally{st.busy=false;if(st.again){st.again=false;setTimeout(run,500)}}
  }
  let t;const schedule=()=>{if(!token())return;clearTimeout(t);t=setTimeout(run,3000)};
@@ -3768,6 +3771,7 @@ const Cloud=(()=>{
    <p class="hint">Ключ даёт доступ только к папке студии на Диске. Не пересылай его другим людям.</p></div>`;
   return `<div class="form"><div class="stat ok"><span>${esc(st.user||'Яндекс Диск')}<br><small style="color:var(--muted)">${st.space?`Занято ${mb(st.space[0])} из ${mb(st.space[1])}`:'Подключено'}</small></span><b>☁</b></div>
    ${chip()}
+   ${proxy()?'':'<div class="bh warn" style="margin:0"><b>!</b><span>Скачивание колод с Диска на другие устройства не включено: нужен посредник (Cloudflare Worker). Пока колоды только сохраняются на Диск.</span></div>'}
    <button class="btn primary" data-act="ya-sync">Синхронизировать сейчас</button>
    <p class="hint">Изменения уходят на Диск сами через несколько секунд. Когда открываешь студию на другом устройстве, колоды подтягиваются автоматически. Файлы лежат на Диске в папке «Приложения».</p>
    ${manual()?(locked()?'<p class="hint">Вход по паролю для всех устройств включён.</p>':`<details class="item"><summary>Вход на всех устройствах по паролю</summary><div class="form"><p class="hint">Придумай пароль — студия зашифрует им ключ. Строку положишь в config.js, и на телефоне и других ПК хватит один раз ввести пароль.</p>
@@ -3777,7 +3781,7 @@ const Cloud=(()=>{
  async function publish(id){await run();const p=`${DIR}/${id}.json`;let r=await api('PUT','/resources/publish',{path:p});if(!r.ok&&r.status!==409)throw new Error('Яндекс не опубликовал файл ('+r.status+')');
   const m=await json('GET','/resources',{path:p,fields:'public_key,public_url'});if(!m.public_key)throw new Error('Нет публичной ссылки');return redirect()+'?d='+encodeURIComponent(m.public_key)}
  async function unpublish(id){await api('PUT','/resources/unpublish',{path:`${DIR}/${id}.json`})}
- async function fetchPublic(key){const u=new URL(API+'/public/resources/download');u.searchParams.set('public_key',key);const r=await fetch(u);if(!r.ok)throw new Error('public '+r.status);const {href}=await r.json();const f=await fetch(href);if(!f.ok)throw new Error('dl '+f.status);return f.json()}
+ async function fetchPublic(key){const u=new URL(API+'/public/resources/download');u.searchParams.set('public_key',key);const r=await fetch(u);if(!r.ok)throw new Error('public '+r.status);const {href}=await r.json();const f=await grab(href);if(!f.ok)throw new Error('dl '+f.status);return f.json()}
  return{available,init,run,schedule,login,logout,panel,connect,publish,unpublish,fetchPublic,unlock,makeLock,chip,hashDeck,seedSig,state:st}
 })();
 
