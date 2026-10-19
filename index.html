@@ -3209,7 +3209,7 @@ const wrap=(html,id)=>`<div class="wrap">${html}<button class="btn sm png" data-
 // shrink single-line titles to fit; scale tall hero cards into their print slot
 function shrink(el,over,minK){el.style.fontSize='';let f=parseFloat(getComputedStyle(el).fontSize),min=f*minK,n=0;while(over(el)&&f>min&&n++<80){f-=.25;el.style.fontSize=f+'px'}}
 function fitText(root){
- root.querySelectorAll('.fit').forEach(el=>shrink(el,e=>e.scrollWidth>e.clientWidth+1,.5));
+ root.querySelectorAll('.fit').forEach(el=>{el.style.whiteSpace='';shrink(el,e=>e.scrollWidth>e.clientWidth+1,.55);if(el.scrollWidth>el.clientWidth+1)el.style.whiteSpace='normal'});
  root.querySelectorAll('.fitv').forEach(el=>shrink(el,e=>e.scrollHeight>e.clientHeight+1,.5));
  root.querySelectorAll('.fitb').forEach(el=>shrink(el,e=>e.scrollHeight>e.clientHeight+1,.62));
 }
@@ -3653,9 +3653,10 @@ const Cloud=(()=>{
  function chip(){if(!available())return'';const t=new Date(st.last).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'});
   const m={off:['Облако выключено','muted'],login:['Подключи Яндекс Диск','warn'],sync:['Синхронизирую…','muted'],ok:[`Сохранено на Диске · ${t}`,'ok'],err:[st.msg||'Ошибка облака','bad'],offline:['Нет связи — сохранено на устройстве','warn']}[st.status]||['','muted'];
   return `<button class="cchip ${m[1]}" data-sec="cloud">☁ ${esc(m[0])}</button>`}
+ const tfetch=(u,o={},ms=20000)=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),ms);return fetch(u,{...o,signal:c.signal}).finally(()=>clearTimeout(t))};
  async function api(method,path,params={}){
   const u=new URL(API+path);for(const k in params)u.searchParams.set(k,params[k]);
-  let r;try{r=await fetch(u,{method,headers:{Authorization:'OAuth '+token()}})}catch(e){const er=new Error('net');er.net=true;throw er}
+  let r;try{r=await tfetch(u,{method,headers:{Authorization:'OAuth '+token()}})}catch(e){const er=new Error('net');er.net=true;throw er}
   if(r.status===401){logout(true);const er=new Error('auth');er.auth=true;throw er}
   return r}
  async function json(method,path,params){const r=await api(method,path,params);if(!r.ok){const er=new Error('http '+r.status);er.status=r.status;throw er}return r.status===204?null:r.json()}
@@ -3667,12 +3668,12 @@ const Cloud=(()=>{
    const j=await r.json(),e=j._embedded||{},got=e.items||[];items.push(...got);off+=got.length;if(!got.length||off>=(e.total||0))return items}}
  async function upload(d){
   const p=`${DIR}/${d.id}.json`;const {href,method}=await json('GET','/resources/upload',{path:p,overwrite:'true'});
-  let r;try{r=await fetch(href,{method:method||'PUT',body:new Blob([JSON.stringify(d)],{type:'application/octet-stream'})})}catch(e){throw Object.assign(new Error('net'),{net:true})}
+  let r;try{r=await tfetch(href,{method:method||'PUT',body:new Blob([JSON.stringify(d)],{type:'application/octet-stream'})})}catch(e){throw Object.assign(new Error('net'),{net:true})}
   if(!r.ok&&r.status!==201&&r.status!==202)throw Object.assign(new Error('upload'),{status:r.status});
   const meta=await json('GET','/resources',{path:p,fields:'modified'});return meta.modified}
  const proxy=()=>(window.YA_PROXY||'').trim().replace(/\/+$/,'');
  const viaProxy=href=>proxy()?`${proxy()}/?u=${encodeURIComponent(href)}`:href;
- async function grab(href){try{return await fetch(viaProxy(href))}catch(e){throw Object.assign(new Error(proxy()?'Посредник не ответил':'Яндекс не отдал файл колоды'),{net:true,dl:true,noProxy:!proxy()})}}
+ async function grab(href){try{return await tfetch(viaProxy(href),{},25000)}catch(e){throw Object.assign(new Error(proxy()?'Посредник не ответил':'Яндекс не отдал файл колоды'),{net:true,dl:true,noProxy:!proxy()})}}
  async function download(name){const {href}=await json('GET','/resources/download',{path:`${DIR}/${name}`});
   const r=await grab(href);
   if(!r.ok)throw Object.assign(new Error('download'),{status:r.status});return r.json()}
@@ -3707,7 +3708,7 @@ const Cloud=(()=>{
    await saveMeta();
    if(changed){await IDB.set('store',store).catch(()=>{});const typing=document.activeElement&&/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);if(!typing)render();else renderBench()}
    st.last=Date.now();set('ok');
-  }catch(e){console.error(e);if(e.auth)set('login');else if(e.net&&!e.dl)set('offline');else set('err',e.dl?(e.noProxy?'Нужен посредник для скачивания — см. «Облако»':'Посредник для скачивания не ответил'):e.status===507?'На Яндекс Диске нет места':'Ошибка облака'+(e.status?' ('+e.status+')':''))}
+  }catch(e){console.error(e);if(e.auth)set('login');else if(e.net&&!e.dl)set('offline');else set('err',e.dl?(e.noProxy?'Нужен посредник для скачивания — см. «Облако»':'Посредник не отвечает — возможно, он недоступен из твоей сети'):e.status===507?'На Яндекс Диске нет места':'Ошибка облака'+(e.status?' ('+e.status+')':''))}
   finally{st.busy=false;if(st.again){st.again=false;setTimeout(run,500)}}
  }
  let t;const schedule=()=>{if(!token())return;clearTimeout(t);t=setTimeout(run,3000)};
@@ -3836,6 +3837,7 @@ async function exportPng(btn){
  catch(err){console.error(err);toast('Не удалось сделать картинку')}
  btn.textContent='PNG';
 }
+try{document.fonts.addEventListener('loadingdone',()=>{const b=$('#bench');if(b)fitText(b)})}catch(e){}
 addEventListener('beforeprint',()=>{const pr=$('#print');pr.classList.add('rendering');fitSlots(pr);pr.classList.remove('rendering')});
 $('#side').innerHTML='<p class="hint" style="padding:8px">Загружаю колоды…</p>';
 loadStore().then(async()=>{for(const d of Object.values(store.decks))if(d._seed===1)d._seed=Cloud.seedSig(d);if(Object.keys(store.decks).length>1)section='decks';render();try{const k=new URLSearchParams(location.search).get('d');if(k&&Cloud.available())openShared(k)}catch(e){}await Cloud.init();if(Object.keys(store.decks).length>1&&!section){section='decks';render()}});
