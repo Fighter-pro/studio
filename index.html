@@ -2739,7 +2739,8 @@ button,input,select,textarea{font:inherit;color:inherit}
 .brand{display:flex;align-items:baseline;gap:8px;padding:4px 4px 8px}
 .brand b{font-family:var(--f-card);font-size:22px;letter-spacing:.04em;text-transform:uppercase}
 .brand span{color:var(--muted);font-size:12px}
-.menu{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.menu{border:1px solid var(--line);border-radius:10px;overflow:hidden;flex:none}
+.side>*{flex-shrink:0}
 .menu button{display:flex;width:100%;align-items:center;justify-content:space-between;gap:10px;background:transparent;border:0;border-bottom:1px solid var(--line);padding:14px 16px;text-align:left;cursor:pointer}
 .menu button:last-child{border-bottom:0}
 .menu button:hover{background:var(--panel-2)}
@@ -3331,7 +3332,7 @@ function renderSide(){
    <button class="btn" data-sec="decks">Все мои колоды · ${Object.keys(store.decks).length}</button>
    <span data-cloud-chip>${Cloud.chip()}</span>
    <nav class="menu">${SECTIONS.filter(x=>x[0]!=='cloud'||Cloud.available()).map(([k,t,d])=>`<button data-sec="${k}"><span><b>${t}</b><small>${d}</small></span><span class="cnt">${secCount(k)??''} ›</span></button>`).join('')}</nav>
-   <div class="foot">Нажми на любую карту справа, чтобы её отредактировать. Всё сохраняется в этом браузере автоматически. Для переноса на другое устройство используй «Экспорт JSON» в разделе «Основное».</div>`;
+   <div class="foot">Нажми на любую карту справа, чтобы её отредактировать. Всё сохраняется автоматически${Cloud.available()?" — на этом устройстве и в облаке":" в этом браузере"}.</div>`;
   return}
  const title=SECTIONS.find(x=>x[0]===section)[1];
  let body='';
