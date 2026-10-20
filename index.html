@@ -3151,7 +3151,9 @@ const IDB={db:null,
  open(){return new Promise((res,rej)=>{const r=indexedDB.open('unmatched-studio',1);r.onupgradeneeded=()=>r.result.createObjectStore('kv');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);r.onblocked=()=>rej(new Error('blocked'))})},
  req(mode,fn){return new Promise((res,rej)=>{const tx=this.db.transaction('kv',mode),r=fn(tx.objectStore('kv'));tx.oncomplete=()=>res(r&&r.result);tx.onerror=tx.onabort=()=>rej(tx.error)})},
  get(k){return this.req('readonly',st=>st.get(k))},
- set(k,v){return this.req('readwrite',st=>st.put(v,k))}};
+ set(k,v){return this.req('readwrite',st=>st.put(v,k))},
+ del(k){return this.req('readwrite',st=>st.delete(k))},
+ keys(){return this.req('readonly',st=>st.getAllKeys())}};
 let store,deck,saveT,saving=Promise.resolve(),storageMode='none';
 async function loadStore(){
  let s=null;
@@ -3350,6 +3352,7 @@ function renderSide(){
    <div class="btns"><button class="btn" data-act="import">Импорт JSON</button><button class="btn" data-act="sample">Пример (Хищник)</button></div>
    ${canSave()?'<button class="btn" data-act="dlall">Скачать все колоды (резервная копия)</button>':''}
    <button class="btn" data-act="dedupe">Убрать одинаковые копии</button>
+   <button class="btn" data-act="clearhist">Очистить историю версий</button>
    <p class="hint">Нажми на колоду справа, чтобы открыть её и редактировать. Удаление спрашивает подтверждение.</p>
    <div class="stat" id="stinfo"><span>Колод: ${Object.keys(store.decks).length}<br><small style="color:var(--muted)">Занято на этом устройстве</small></span><b style="font-size:14px">…</b></div></div>`;
   storageInfo().then(i=>{const el=document.getElementById('stinfo');if(!el)return;const b=el.querySelector('b');b.textContent=i&&i.quota?`${mb(i.used)} из ${mb(i.quota)}`:(storageMode==='ls'?'до 5 МБ':'—')})}
@@ -3420,7 +3423,7 @@ function defaults(key){return{
  sidekicks:{name:'Помощник',attack:'melee',health:3,qty:1},
  tokens:{name:'Жетон',value:'',qty:1,image:''},
  actions:{title:'Новая карта',type:'attack',value:3,boost:2,who:deck.hero.name,qty:3,text:'',imm:'',dur:'',aft:'',image:''}}[key]}
-function resizeImage(file,max=900){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.86))};im.onerror=rej;im.src=r.result};r.onerror=rej;r.readAsDataURL(file)})}
+function resizeImage(file,max=780){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.86))};im.onerror=rej;im.src=r.result};r.onerror=rej;r.readAsDataURL(file)})}
 function openEditor(ref){
  const [k,i]=ref.split(':');section=k;openItem=i!=null?ref:null;renderSide();
  if(i!=null){const el=document.getElementById(`it-${k}-${i}`);if(el){el.scrollIntoView({block:'nearest',behavior:'smooth'});el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),1200)}}
@@ -3483,6 +3486,7 @@ document.addEventListener('click',async e=>{
  if(a==='del'){delete store.decks[deck.id];const rest=Object.values(store.decks);deck=rest[0]||blankDeck();store.decks[deck.id]=deck;store.current=deck.id;save();toast('Колода удалена');return render()}
  if(a==='export'){const j=JSON.stringify(deck);const local=canSave();modal(`<h2 class="sec">Экспорт колоды</h2><p class="hint">${local?'Скачай колоду файлом .json — так она не потеряется, даже если очистить браузер.':'Скопируй текст и сохрани в файл .json — потом его можно импортировать на любом устройстве.'}</p><textarea id="exporttext" readonly>${esc(j)}</textarea><div class="btns">${local?'<button class="btn primary" data-act="dl">Скачать файл колоды</button><button class="btn" data-act="dlall">Скачать все колоды</button>':''}<button class="btn${local?'':' primary'}" data-act="copy">Копировать</button><button class="btn" data-act="close">Закрыть</button></div>`);return}
  if(a==='pdf')return makePdf(t);
+ if(a==='clearhist')return clearHistory();
  if(a==='dedupe'){const list=Object.values(store.decks).sort((x,y)=>(/\(с этого устройства\)|\(копия\)/.test(x.name)?1:0)-(/\(с этого устройства\)|\(копия\)/.test(y.name)?1:0));const keep=[],gone=[];
   for(const d of list){if(keep.some(k=>Cloud.sameDeck(k,d)))gone.push(d);else keep.push(d)}
   if(!gone.length)return toast('Одинаковых копий не найдено');gone.forEach(d=>delete store.decks[d.id]);if(!store.decks[deck.id]){deck=keep[0];store.current=deck.id}
@@ -3623,14 +3627,33 @@ async function exportTTS(btn){
 // ---------- version history (local, per deck) ----------
 const HIST_MAX=15,HIST_GAP=10*60*1000;
 async function histGet(id){try{return(IDB.db&&await IDB.get('hist:'+id))||[]}catch(e){return[]}}
+// images are kept once in IDB under img:<sha>; snapshots only reference them
+async function imgHashName(dataUrl){const m=/^data:([^;]+);base64,(.*)$/.exec(dataUrl||'');if(!m)return null;const bin=Uint8Array.from(atob(m[2]),c=>c.charCodeAt(0));
+ const h=new Uint8Array(await crypto.subtle.digest('SHA-256',bin));const ext={'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif'}[m[1]]||'jpg';
+ return [...h.slice(0,12)].map(x=>x.toString(16).padStart(2,'0')).join('')+'.'+ext}
+const imgSlots=d=>{const o=[];if(d.cover)o.push(d.cover);(d.actions||[]).forEach(a=>o.push(a));(d.tokens||[]).forEach(t=>o.push(t));return o};
+async function slimDeck(d){const c=JSON.parse(JSON.stringify(d));for(const o of imgSlots(c)){const v=o.image;if(!v||!v.startsWith('data:'))continue;const n=await imgHashName(v);if(!n)continue;
+  let have=null;try{have=await IDB.get('img:'+n)}catch(e){}if(!have)try{await IDB.set('img:'+n,v)}catch(e){}o.image='ref:'+n}return c}
+async function fatDeck(c){for(const o of imgSlots(c)){const v=o.image;if(!v||!v.startsWith('ref:'))continue;let du='';try{du=await IDB.get('img:'+v.slice(4))||''}catch(e){}o.image=du}return c}
 async function snapshot(d,why){if(!IDB.db||!d)return;const h=await histGet(d.id);
- h.unshift({t:Date.now(),why:why||'',data:JSON.parse(JSON.stringify(d))});while(h.length>HIST_MAX)h.pop();try{await IDB.set('hist:'+d.id,h)}catch(e){}}
+ h.unshift({t:Date.now(),why:why||'',data:await slimDeck(d)});while(h.length>HIST_MAX)h.pop();try{await IDB.set('hist:'+d.id,h)}catch(e){}}
 const lastSnap={};
 function autoSnap(){if(!deck)return;const t=lastSnap[deck.id]||0;if(Date.now()-t>HIST_GAP){lastSnap[deck.id]=Date.now();snapshot(deck,'Автосохранение')}}
 async function historyPanel(){const el=document.getElementById('histlist');if(!el)return;const h=await histGet(deck.id);
  el.innerHTML=h.length?h.map((v,i)=>{const n=(v.data.actions||[]).reduce((s,a)=>s+(+a.qty||0),0);return `<div class="hrow"><span><b>${new Date(v.t).toLocaleString('ru-RU',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</b><small>${esc(v.why)} · ${n} ${plural(n,'карта','карты','карт')} · «${esc(v.data.name)}»</small></span><button class="btn sm" data-restore="${i}">Вернуть</button></div>`}).join(''):'<p class="hint">Пока нет сохранённых версий. Они появляются сами каждые 10 минут работы над колодой.</p>'}
+// one-time slimming of old full-size history + removal of unused cached images and orphan histories
+async function tidyStorage(){if(!IDB.db)return;
+ try{const keys=await IDB.keys(),live=new Set(Object.keys(store.decks)),used=new Set();
+  for(const k of keys){if(!String(k).startsWith('hist:'))continue;const id=String(k).slice(5);
+   if(!live.has(id)){await IDB.del(k);continue}
+   const h=await IDB.get(k)||[];let ch=false;for(const v of h){if(JSON.stringify(v.data).includes('"image":"data:')){v.data=await slimDeck(v.data);ch=true}imgSlots(v.data).forEach(o=>{if(o.image&&o.image.startsWith('ref:'))used.add(o.image.slice(4))})}
+   if(ch)await IDB.set(k,h)}
+  for(const d of Object.values(store.decks))for(const o of imgSlots(d))if(o.image&&o.image.startsWith('data:')){const n=await imgHashName(o.image);if(n)used.add(n)}
+  for(const k of await IDB.keys())if(String(k).startsWith('img:')&&!used.has(String(k).slice(4)))await IDB.del(k);
+ }catch(e){console.error(e)}}
+async function clearHistory(){if(!IDB.db)return;try{for(const k of await IDB.keys())if(String(k).startsWith('hist:'))await IDB.del(k)}catch(e){}await tidyStorage();renderSide();toast('История версий очищена')}
 async function restoreVersion(i){const h=await histGet(deck.id),v=h[i];if(!v)return;await snapshot(deck,'Перед возвратом');
- const d=JSON.parse(JSON.stringify(v.data));d.id=deck.id;store.decks[d.id]=d;deck=d;save();render();toast('Версия возвращена. Текущая сохранена в истории.')}
+ const d=await fatDeck(JSON.parse(JSON.stringify(v.data)));d.id=deck.id;store.decks[d.id]=d;deck=d;save();render();toast('Версия возвращена. Текущая сохранена в истории.')}
 // ---------- share a deck as a file ----------
 function shareDeck(id){const d=store.decks[id];if(!d)return;const c=JSON.parse(JSON.stringify(d));delete c._seed;
  if(!canSave())return toast('Скачивание здесь недоступно');saveFile(safeName(d.name)+'.json',JSON.stringify(c));
@@ -3834,6 +3857,7 @@ addEventListener('beforeprint',()=>{const pr=$('#print');pr.classList.add('rende
 $('#side').innerHTML='<p class="hint" style="padding:8px">Загружаю колоды…</p>';
 if(Cloud.gateNeeded())Cloud.showGate();
 window.storeReady=loadStore();
+window.storeReady.then(()=>setTimeout(()=>tidyStorage().then(()=>{if(section==='decks')renderSide()}),4000));
 window.storeReady.then(async()=>{for(const d of Object.values(store.decks))if(d._seed===1)d._seed=Cloud.seedSig(d);if(Object.keys(store.decks).length>1)section='decks';render();await Cloud.init();if(Object.keys(store.decks).length>1&&!section){section='decks';render()}});
 </script>
 
