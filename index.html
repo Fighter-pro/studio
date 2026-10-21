@@ -3801,12 +3801,16 @@ const Cloud=(()=>{
   for(const f of files){const m=/^shared\/([^/]+)\.json$/.exec(f.path);if(!m)continue;try{const c=JSON.parse(await rawText(f.path));c.id=m[1];out.push(await fromRemote(c))}catch(e){if(e.net)throw e}}
   out.sort((a,b)=>String(b._at||'').localeCompare(String(a._at||'')));sharedList.cache=out;return shared=out}
  const mine=d=>!who()||(d._by||'')===who();
- async function publish(d){if(!token())return toast('Сначала подключи облако');set('sync');
+ async function publish(d){if(!token())return toast('Сначала подключи облако');
+  for(let i=0;st.busy&&i<120;i++)await new Promise(z=>setTimeout(z,500));st.busy=true;set('sync');
   try{const have=new Set((await tree()).map(f=>f.path)),path=`${SH}/${d.id}.json`,cur=have.has(path)?await remoteSha(path):null;
    if(cur){const old=JSON.parse(await rawText(path));if(!mine(old)){set('ok');return toast('Эту колоду в общие выложил другой пользователь')}}
    const c=await toRemote(d,have);c._by=who();c._at=new Date().toISOString();
-   await putFile(path,b64utf8(JSON.stringify(c)),cur,'Общая колода «'+d.name+'»');shared=null;set('ok');toast(cur?'Колода обновлена в общих':'Колода выложена в общие — её видят все пользователи')}
-  catch(e){console.error(e);set('err','Не удалось выложить');toast(e.net?'Нет связи с GitHub':'Не удалось выложить колоду')}}
+   const body=b64utf8(JSON.stringify(c));let sha=cur;
+   for(let i=0;;i++){try{await putFile(path,body,sha,'Общая колода «'+d.name+'»');break}catch(e){if(i<3&&(e.status===409||e.status===422)){await new Promise(z=>setTimeout(z,1000*(i+1)));sha=await remoteSha(path);continue}throw e}}
+   shared=null;st.last=Date.now();set('ok');toast(cur?'Колода обновлена в общих':'Колода выложена в общие — её видят все пользователи')}
+  catch(e){console.error(e);set('ok');toast(e.net?'Нет связи с GitHub — попробуй ещё раз':'Не удалось выложить колоду: '+(e.message||e))}
+  finally{st.busy=false;if(st.again){st.again=false;setTimeout(run,500)}}}
  async function unpublish(id){const sd=(shared||[]).find(x=>x.id===id);if(sd&&!mine(sd))return toast('Убрать может только тот, кто выложил');
   const path=`${SH}/${id}.json`,cur=await remoteSha(path).catch(()=>null);if(cur){const r=await gh('DELETE',P(path),{message:'Убрана общая колода',sha:cur});if(!r.ok&&r.status!==404)return toast('Не удалось убрать')}
   shared=(shared||[]).filter(x=>x.id!==id);sharedList.cache=shared;toast('Колода убрана из общих')}
