@@ -3242,9 +3242,21 @@ function deckGallery(){
    <button class="dopen" data-open="${d.id}" title="Открыть">${deckThumb(d)}</button>
    <div class="dinfo"><b>${esc(d.name)}</b><small>${esc((d.hero&&d.hero.name)||'')} · ${n} ${n%10===1&&n%100!==11?'карта':(n%10>=2&&n%10<=4&&(n%100<10||n%100>=20))?'карты':'карт'} · ${esc(styleName(d.look))}</small>${cur?'<span class="pill">Открыта сейчас</span>':''}</div>
    ${delAsk===d.id?`<div class="dact"><span class="hint" style="flex-basis:100%">Удалить «${esc(d.name)}» навсегда?</span><button class="btn sm danger" data-delyes="${d.id}">Да, удалить</button><button class="btn sm" data-delno>Отмена</button></div>`
-   :`<div class="dact"><button class="btn sm primary" data-open="${d.id}">Открыть</button><button class="btn sm" data-copy="${d.id}">Копия</button><button class="btn sm danger" data-delask="${d.id}">Удалить</button><button class="btn sm" data-share="${d.id}" title="Скачать файл колоды, чтобы отправить другу">Поделиться</button></div>`}
+   :`<div class="dact"><button class="btn sm primary" data-open="${d.id}">Открыть</button><button class="btn sm" data-copy="${d.id}">Копия</button><button class="btn sm danger" data-delask="${d.id}">Удалить</button><button class="btn sm" data-share="${d.id}" title="Скачать файл колоды, чтобы отправить другу">Поделиться</button>${cloudOn()?`<button class="btn sm" data-act="sh-pub" data-id="${d.id}" title="Выложить в общие колоды — её увидят все пользователи студии">В общие</button>`:''}</div>`}
   </div>`}).join('')}
- </div></div>`}
+ </div></div>${cloudOn()?sharedGallery():''}`}
+let sharedOpen=false,sharedErr='';
+const cloudOn=()=>Cloud.available()&&Cloud.hasToken();
+function sharedGallery(){
+ const L=sharedOpen&&!sharedErr?Cloud.sharedList.cache:null;
+ let body;if(!sharedOpen)body=`<p class="hint">Колоды, которые пользователи студии выложили для всех. Возьми себе копию — и меняй её как хочешь.</p><button class="btn" data-act="sh-load">Показать общие колоды</button>`;
+ else if(sharedErr)body=`<p class="hint">${esc(sharedErr)}</p><button class="btn" data-act="sh-load">Попробовать ещё раз</button>`;
+ else if(!L)body=`<p class="hint">Загружаю…</p>`;
+ else if(!L.length)body=`<p class="hint">Пока пусто. Нажми «В общие» у своей колоды, чтобы выложить её.</p><button class="btn sm" data-act="sh-load">Обновить</button>`;
+ else body=`<div class="decks">${L.map(d=>{const n=(d.actions||[]).reduce((s,a)=>s+(+a.qty||0),0);
+  return `<div class="dcard"><div class="dopen" style="cursor:default">${deckThumb(d)}</div><div class="dinfo"><b>${esc(d.name)}</b><small>${esc((d.hero&&d.hero.name)||'')} · ${n} карт · выложил: ${esc(d._by||'владелец')}</small></div>
+  <div class="dact"><button class="btn sm primary" data-act="sh-take" data-id="${d.id}">Взять себе</button>${Cloud.mine(d)?`<button class="btn sm danger" data-act="sh-del" data-id="${d.id}">Убрать из общих</button>`:''}</div></div>`}).join('')}</div><button class="btn sm" data-act="sh-load" style="margin-top:10px">Обновить</button>`;
+ return `<div class="group"><h3>Общие колоды${L&&L.length?' · '+L.length:''}</h3>${body}</div>`}
 function popt(){return deck.printOpt||(deck.printOpt={backs:true,extras:true,tokens:true})}
 function buildSheets(){
  const o=popt(),out=[];
@@ -3503,6 +3515,11 @@ document.addEventListener('click',async e=>{
  if(a==='gh-lock')return Cloud.makeLock(($('#gh-np1')||{}).value,($('#gh-np2')||{}).value);
  if(a==='gh-logout')return Cloud.logout();
  if(a==='gh-sync')return Cloud.run();
+ if(a==='gh-adduser')return Cloud.addUser(($('#gh-un')||{}).value,($('#gh-up1')||{}).value,($('#gh-up2')||{}).value,($('#gh-utk')||{}).value);
+ if(a==='sh-load'){sharedOpen=true;sharedErr='';renderBench();try{await Cloud.sharedList(true)}catch(e){sharedErr=e.net?'Нет связи с GitHub':'Не удалось загрузить общие колоды'}return renderBench()}
+ if(a==='sh-pub'){await Cloud.publish(store.decks[t.dataset.id]||deck);if(sharedOpen){try{await Cloud.sharedList(true)}catch(e){}renderBench()}return}
+ if(a==='sh-take'){const d=Cloud.take(t.dataset.id);if(!d)return;store.decks[d.id]=d;save();renderBench();renderSide();return toast('Колода «'+d.name+'» добавлена в твои колоды')}
+ if(a==='sh-del'){if(!confirm('Убрать колоду из общих? У тебя она останется.'))return;await Cloud.unpublish(t.dataset.id);return renderBench()}
  if(a==='savepng'){if(lastPng)saveFile(t.dataset.name,lastPng);return}
  if(a==='dl')return download(JSON.stringify(deck),(deck.name||'колода')+'.json');
  if(a==='dlall')return download(JSON.stringify({allDecks:Object.values(store.decks)}),'все-колоды-'+new Date().toISOString().slice(0,10)+'.json');
@@ -3668,6 +3685,11 @@ const Cloud=(()=>{
  const locked=()=>(window.GH_LOCKED||'').trim();
  const available=()=>window.self===window.top&&location.protocol==='https:';
  const token=()=>ls.get(TK);
+ const UK='gh.user',who=()=>ls.get(UK)||'';
+ const users=()=>{const u=window.GH_USERS;return u&&typeof u==='object'?u:{}};
+ const locks=()=>[...(locked()?[['',locked()]]:[]),...Object.entries(users()).filter(([n,b])=>n&&b)];
+ const ufolder=n=>String(n).trim().replace(/[\\/:*?"<>|.]+/g,'_').slice(0,40)||'user';
+ const DIR=()=>who()?`users/${ufolder(who())}/decks`:'decks';
  function fnv(str){let h=2166136261>>>0;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619)>>>0}return h.toString(36)+':'+str.length}
  const hashDeck=d=>fnv(JSON.stringify(d,(k,v)=>k&&k[0]==='_'?undefined:v));
  const seedSig=d=>fnv(JSON.stringify([d.name,d.author,d.hero,d.sidekicks,d.rules,d.actions,d.tokens,d.cover]));
@@ -3712,19 +3734,19 @@ const Cloud=(()=>{
   return c}
  async function loadMeta(){try{st.synced=(IDB.db&&await IDB.get('ghsync'))||{}}catch(e){st.synced={}}}
  async function saveMeta(){try{IDB.db&&await IDB.set('ghsync',st.synced)}catch(e){}}
- async function upload(L,have,sha){const c=await toRemote(L,have);return putFile(`decks/${L.id}.json`,b64utf8(JSON.stringify(c)),sha,'Колода «'+L.name+'»')}
+ async function upload(L,have,sha){const c=await toRemote(L,have);return putFile(`${DIR()}/${L.id}.json`,b64utf8(JSON.stringify(c)),sha,'Колода «'+L.name+'»')}
  async function remoteSha(path){const r=await gh('GET',P(path));if(r.status===404)return null;await ok(r,'Не удалось проверить файл');return(await r.json()).sha}
  async function push(L,have,sha,s){
   try{return{sha:await upload(L,have,sha)}}catch(e){if(e.status!==409&&e.status!==422)throw e}
-  const cur=await remoteSha(`decks/${L.id}.json`);if(!cur)return{sha:await upload(L,have,null)};
+  const cur=await remoteSha(`${DIR()}/${L.id}.json`);if(!cur)return{sha:await upload(L,have,null)};
   const d=await download(L.id);if(d&&s&&hashDeck(d)!==s.hash&&!sameDeck(d,L))return{conflict:d,sha:cur};
   return{sha:await upload(L,have,cur)}}
- async function download(id){let t;try{t=await rawText(`decks/${id}.json`)}catch(e){if(e.status===404)return null;throw e}const c=JSON.parse(t);c.id=id;return fromRemote(c)}
+ async function download(id){let t;try{t=await rawText(`${DIR()}/${id}.json`)}catch(e){if(e.status===404)return null;throw e}const c=JSON.parse(t);c.id=id;return fromRemote(c)}
  async function run(){
   if(!repo()){set('off');return}if(!token()){set('login');return}
   if(st.busy){st.again=true;return}st.busy=true;set('sync');let changed=false;
   try{
-   const files=await tree(),R={},have=new Set();files.forEach(f=>{have.add(f.path);const m=/^decks\/(.+)\.json$/.exec(f.path);if(m)R[m[1]]=f.sha});
+   const files=await tree(),R={},have=new Set(),pre=DIR()+'/';files.forEach(f=>{have.add(f.path);if(f.path.startsWith(pre)&&f.path.endsWith('.json')&&!f.path.slice(pre.length).includes('/'))R[f.path.slice(pre.length,-5)]=f.sha});
    const S=st.synced,first=!Object.keys(S).length;
    const keepBoth=async(L,d,rsha)=>{const id=L.id,mine=JSON.parse(JSON.stringify(L));mine.id='d'+Date.now()+Math.random().toString(36).slice(2,6);mine.name=L.name+' (с этого устройства)';
     d.id=id;store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rsha};store.decks[mine.id]=mine;S[mine.id]={hash:hashDeck(mine),sha:await upload(mine,have,null),t:Date.now()};
@@ -3741,7 +3763,7 @@ const Cloud=(()=>{
       if(!d){const p=await push(L,have,null,null);S[id]={hash:h,sha:p.sha,t:Date.now()}}
       else if(sameDeck(L,d)){store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true}
       else{await keepBoth(L,d,rm);changed=true}}
-    }else if(rm){ if(s&&s.sha===rm){let r=await gh('DELETE',P(`decks/${id}.json`),{message:'Удалена колода',sha:rm});if(r.status===409||r.status===422){const cur=await remoteSha(`decks/${id}.json`);r=cur?await gh('DELETE',P(`decks/${id}.json`),{message:'Удалена колода',sha:cur}):{ok:true}}if(!r.ok&&r.status!==404)await ok(r,'Не удалось удалить');delete S[id]}
+    }else if(rm){ if(s&&s.sha===rm){let r=await gh('DELETE',P(`${DIR()}/${id}.json`),{message:'Удалена колода',sha:rm});if(r.status===409||r.status===422){const cur=await remoteSha(`${DIR()}/${id}.json`);r=cur?await gh('DELETE',P(`${DIR()}/${id}.json`),{message:'Удалена колода',sha:cur}):{ok:true}}if(!r.ok&&r.status!==404)await ok(r,'Не удалось удалить');delete S[id]}
      else {const d=await download(id);if(d){store.decks[id]=d;S[id]={hash:hashDeck(d),sha:rm};changed=true}else delete S[id]} }
     else delete S[id];
    }
@@ -3767,15 +3789,39 @@ const Cloud=(()=>{
  async function connect(raw){const tk=String(raw||'').trim();if(tk.length<20)return toast('Вставь ключ GitHub целиком (начинается с github_pat_)');
   set('sync');try{await check(tk)}catch(e){set('login');return toast(e.net?'Нет связи с GitHub':e.message)}
   ls.set(TK,tk);st.synced={};await saveMeta();toast('Подключено! Колоды синхронизируются с GitHub');await run();startTimers();renderSide()}
- async function unlock(pw){if(!pw)return false;let tk;try{tk=await unlockKey(locked(),pw)}catch(e){return false}ls.set(TK,tk);return true}
+ async function unlock(pw){if(!pw)return false;for(const [n,b] of locks()){let tk;try{tk=await unlockKey(b,pw)}catch(e){continue}
+   if(who()!==n){st.synced={};await saveMeta()}ls.set(TK,tk);ls.set(UK,n||null);return true}return false}
  async function makeLock(pw,pw2){if(!pw||pw.length<4)return toast('Пароль — хотя бы 4 символа');if(pw!==pw2)return toast('Пароли не совпадают');
   const line=`window.GH_LOCKED = "${await lockKey(token(),pw)}";`;
   modal(`<h2 class="sec">Строка для config.js</h2><p class="hint">Открой на GitHub файл <b>config.js</b> (в репозитории сайта) → карандаш → добавь эту строку под строкой с GH_REPO → Commit changes.</p><textarea id="exporttext" readonly style="min-height:110px">${esc(line)}</textarea><div class="btns"><button class="btn primary" data-act="copy">Копировать</button><button class="btn" data-act="close">Готово</button></div><p class="hint">После этого сайт будет открываться только по паролю, а на новом устройстве пароль сразу подключит колоды. Пароль нигде не записан — запомни его.</p>`)}
- function logout(){ls.set(TK,null);st.synced={};saveMeta();set('login');toast('Это устройство отключено от облака. Колоды на нём остались.');if(locked())setTimeout(()=>location.reload(),900)}
+ function logout(){ls.set(TK,null);ls.set(UK,null);st.synced={};saveMeta();set('login');toast('Это устройство отключено от облака. Колоды на нём остались.');if(locks().length)setTimeout(()=>location.reload(),900)}
+ // ---- shared folder: decks published for everyone ----
+ const SH='shared';let shared=null;
+ async function sharedList(force){if(shared&&!force)return shared;sharedList.cache=null;const files=await tree(),out=[];
+  for(const f of files){const m=/^shared\/([^/]+)\.json$/.exec(f.path);if(!m)continue;try{const c=JSON.parse(await rawText(f.path));c.id=m[1];out.push(await fromRemote(c))}catch(e){if(e.net)throw e}}
+  out.sort((a,b)=>String(b._at||'').localeCompare(String(a._at||'')));sharedList.cache=out;return shared=out}
+ const mine=d=>!who()||(d._by||'')===who();
+ async function publish(d){if(!token())return toast('Сначала подключи облако');set('sync');
+  try{const have=new Set((await tree()).map(f=>f.path)),path=`${SH}/${d.id}.json`,cur=have.has(path)?await remoteSha(path):null;
+   if(cur){const old=JSON.parse(await rawText(path));if(!mine(old)){set('ok');return toast('Эту колоду в общие выложил другой пользователь')}}
+   const c=await toRemote(d,have);c._by=who();c._at=new Date().toISOString();
+   await putFile(path,b64utf8(JSON.stringify(c)),cur,'Общая колода «'+d.name+'»');shared=null;set('ok');toast(cur?'Колода обновлена в общих':'Колода выложена в общие — её видят все пользователи')}
+  catch(e){console.error(e);set('err','Не удалось выложить');toast(e.net?'Нет связи с GitHub':'Не удалось выложить колоду')}}
+ async function unpublish(id){const sd=(shared||[]).find(x=>x.id===id);if(sd&&!mine(sd))return toast('Убрать может только тот, кто выложил');
+  const path=`${SH}/${id}.json`,cur=await remoteSha(path).catch(()=>null);if(cur){const r=await gh('DELETE',P(path),{message:'Убрана общая колода',sha:cur});if(!r.ok&&r.status!==404)return toast('Не удалось убрать')}
+  shared=(shared||[]).filter(x=>x.id!==id);sharedList.cache=shared;toast('Колода убрана из общих')}
+ function take(id){const sd=(shared||[]).find(x=>x.id===id);if(!sd)return;const d=JSON.parse(JSON.stringify(sd));delete d._by;delete d._at;d.id='d'+Date.now();return d}
+ // ---- owner: add users ----
+ async function addUser(name,pw,pw2,tk){name=String(name||'').trim();tk=String(tk||'').trim()||token();
+  if(who())return toast('Добавлять пользователей может только владелец');if(!name)return toast('Впиши имя пользователя');
+  if(!pw||pw.length<4)return toast('Пароль — хотя бы 4 символа');if(pw!==pw2)return toast('Пароли не совпадают');
+  if(tk!==token()){try{await check(tk)}catch(e){return toast(e.net?'Нет связи с GitHub':e.message)}}
+  const all={...users(),[name]:await lockKey(tk,pw)};const line='window.GH_USERS = '+JSON.stringify(all,null,1).replace(/\n/g,' ')+';';
+  modal(`<h2 class="sec">Строка для config.js</h2><p class="hint">Открой на GitHub файл <b>config.js</b> в репозитории сайта → карандаш. ${Object.keys(users()).length?'<b>Замени</b> строку <code>window.GH_USERS = …</code> на эту':'Добавь эту строку в конец файла'} → Commit changes.</p><textarea id="exporttext" readonly style="min-height:130px">${esc(line)}</textarea><div class="btns"><button class="btn primary" data-act="copy">Копировать</button><button class="btn" data-act="close">Готово</button></div><p class="hint">Через минуту-две «${esc(name)}» сможет войти на сайт со своим паролем. Его колоды хранятся отдельно, в папке <b>users/${esc(ufolder(name))}</b>, и в его студии твои колоды не видны.</p>`)}
  let timers=false;function startTimers(){if(timers)return;timers=true;
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')run()});setInterval(()=>{if(document.visibilityState==='visible')run()},120000)}
  // password gate for the whole site
- const gateNeeded=()=>available()&&!!repo()&&!!locked()&&!token();
+ const gateNeeded=()=>available()&&!!repo()&&locks().length>0&&!token();
  function showGate(){document.documentElement.classList.add('locked');const g=document.createElement('div');g.id='gate';
   g.innerHTML=`<form class="gbox" autocomplete="on"><div class="glogo">◆</div><h1>Студия колод</h1><p>Введи пароль, чтобы открыть студию.</p><input type="password" id="gate-pw" autocomplete="current-password" placeholder="Пароль" required><button class="btn primary" type="submit">Открыть</button><p class="gerr" id="gate-err" hidden>Неверный пароль</p></form>`;
   document.body.appendChild(g);const f=g.querySelector('form');setTimeout(()=>g.querySelector('input').focus(),50);
@@ -3793,13 +3839,21 @@ const Cloud=(()=>{
    <label class="field"><span>Ключ GitHub</span><input type="password" id="gh-key" placeholder="github_pat_…" autocomplete="off"></label>
    <button class="btn primary" data-act="gh-connect">Подключить</button><p class="hint">Ключ хранится только на этом устройстве. Не пересылай его другим людям.</p></div>`;
   return `<div class="form"><div class="stat ok"><span>${esc(repo())}<br><small style="color:var(--muted)">Закрытый репозиторий GitHub</small></span><b>☁</b></div>
+   ${who()?`<div class="stat"><span>Вход: <b>${esc(who())}</b><br><small style="color:var(--muted)">Твои колоды хранятся отдельно от других</small></span><b>👤</b></div>`:''}
    ${chip()}<button class="btn primary" data-act="gh-sync">Синхронизировать сейчас</button>
    <p class="hint">Изменения уходят в облако сами через несколько секунд. На другом устройстве колоды подтягиваются при открытии студии. Картинки хранятся по одной копии, поэтому правка текста почти не занимает места.</p>
    ${locked()?'<p class="hint">Вход по паролю включён: сайт открывается только по паролю.</p>':`<details class="item" open><summary>Пароль на сайт и вход с других устройств</summary><div class="form"><p class="hint">Придумай пароль. Студия зашифрует им ключ, а строку ты положишь в config.js. После этого сайт будет открываться только по паролю, а на телефоне хватит один раз ввести пароль.</p>
     <label class="field"><span>Пароль</span><input type="password" id="gh-np1" autocomplete="new-password"></label><label class="field"><span>Ещё раз</span><input type="password" id="gh-np2" autocomplete="new-password"></label>
     <button class="btn primary" data-act="gh-lock">Создать строку для config.js</button></div></details>`}
+   ${!who()&&locked()?`<details class="item"><summary>Пользователи (${Object.keys(users()).length})</summary><div class="form"><p class="hint">У каждого пользователя свой пароль и свои колоды. Общие колоды видят все — раздел «Мои колоды» → «Общие колоды».</p>
+    ${Object.keys(users()).length?`<p class="hint">Сейчас: ${Object.keys(users()).map(esc).join(', ')}. Чтобы убрать пользователя, удали его из строки GH_USERS в config.js.</p>`:''}
+    <label class="field"><span>Имя</span><input id="gh-un" autocomplete="off" placeholder="Например, Петя"></label>
+    <label class="field"><span>Его пароль</span><input type="password" id="gh-up1" autocomplete="new-password"></label><label class="field"><span>Ещё раз</span><input type="password" id="gh-up2" autocomplete="new-password"></label>
+    <label class="field"><span>Отдельный ключ GitHub (лучше)</span><input type="password" id="gh-utk" autocomplete="off" placeholder="github_pat_… — можно оставить пустым"></label>
+    <p class="hint">С отдельным ключом пользователя можно отключить в любой момент: удалить его ключ на GitHub. Если оставить пустым, будет использован твой ключ.</p>
+    <button class="btn primary" data-act="gh-adduser">Создать строку для config.js</button></div></details>`:''}
    <button class="btn danger" data-act="gh-logout">Отключить это устройство</button></div>`}
- return{available,init,run,schedule,logout,panel,connect,makeLock,chip,hashDeck,seedSig,sameDeck,gateNeeded,showGate,state:st}
+ return{available,init,run,schedule,logout,panel,connect,makeLock,addUser,sharedList,publish,unpublish,take,mine,who,hasToken:()=>!!token(),chip,hashDeck,seedSig,sameDeck,gateNeeded,showGate,state:st}
 })();
 
 // ---------- files: PDF, PNG, JSON ----------
