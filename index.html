@@ -2884,7 +2884,7 @@ html.locked .app{visibility:hidden}
 .action .art{height:222px;flex:none;background:#222 center/cover;position:relative}
 .art.ph::after{content:"добавь арт";position:absolute;inset:auto 0 46px 50px;text-align:center;color:rgba(255,255,255,.28);font-family:var(--f-card);text-transform:uppercase;letter-spacing:.2em;font-size:11px}
 .ribbon{position:absolute;left:var(--rl,8px);top:0;width:var(--rw,42px);display:flex;flex-direction:column;align-items:center;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
-.ribbon .val{width:100%;padding:6px 0 4px;display:flex;flex-direction:column;align-items:center;gap:1px;color:#fff;font-family:var(--f-card);font-size:var(--rvf,23px);line-height:1;font-weight:500}
+.ribbon .val{width:100%;padding:6px 0 calc(4px + var(--vpad,0px));margin-bottom:calc(0px - var(--vpad,0px));clip-path:var(--vclip,none);position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;gap:1px;color:#fff;font-family:var(--f-card);font-size:var(--rvf,23px);line-height:1;font-weight:500}
 .ribbon .val svg{width:var(--rvi,24px);height:var(--rvi,24px)}
 .ribbon .who{width:100%;background:#0b0b0c;color:#fff;font-family:var(--f-title);text-transform:uppercase;font-size:calc(var(--rwf,15px)*var(--ts));font-weight:var(--rww,400);letter-spacing:var(--rls,.03em);writing-mode:vertical-rl;transform:rotate(180deg);text-align:right;padding:var(--rwp,12px 0 8px);line-height:var(--rw,42px);clip-path:var(--rib);max-height:var(--rmax,150px);overflow:hidden;white-space:nowrap}
 .boost:empty{display:none}
@@ -3122,7 +3122,7 @@ const STYLES=[
 function lum(hex){const n=parseInt((hex||'#000').slice(1),16);const c=[n>>16,(n>>8)&255,n&255].map(v=>{v/=255;return v<=.03928?v/12.92:((v+.055)/1.055)**2.4});return .2126*c[0]+.7152*c[1]+.0722*c[2]}
 function applyLook(el){
  const L=deck.look=Object.assign({},LOOK0,deck.look);const F=FONTS[L.font]||FONTS.oswald;
- const v={'--c-border':L.border,'--c-char':L.char,'--c-panel':L.panel,'--ink':L.ink,'--ink-fg':lum(L.ink)>.4?'#1c140a':'#ffffff','--f-title':`${F.f},"Oswald",sans-serif`,'--ts':F.s,'--tex':(TEX[L.tex]||TEX.none).v,'--rib':(RIB[L.rib]||RIB.chevron).v,'--r':L.radius==='square'?'4px':'14px','--tx':(+L.txt||1)*(BODYF[L.body]||BODYF.narrow).k,'--f-text':(BODYF[L.body]||BODYF.narrow).f,'--txv':(BODYF[L.body]||BODYF.narrow).v,...(L.ribsz==='big'?{'--rw':'54px','--rl':'6px','--rvf':'32px','--rvi':'30px','--rwf':'19px','--rww':'500','--rls':'.06em','--rwp':'14px 0 12px','--rmax':'148px'}:{'--rw':'42px','--rl':'8px','--rvf':'23px','--rvi':'24px','--rwf':'15px','--rww':'400','--rls':'.03em','--rwp':'12px 0 8px','--rmax':'150px'})};
+ const v={'--c-border':L.border,'--c-char':L.char,'--c-panel':L.panel,'--ink':L.ink,'--ink-fg':lum(L.ink)>.4?'#1c140a':'#ffffff','--f-title':`${F.f},"Oswald",sans-serif`,'--ts':F.s,'--tex':(TEX[L.tex]||TEX.none).v,'--rib':(RIB[L.rib]||RIB.chevron).v,'--r':L.radius==='square'?'4px':'14px','--tx':(+L.txt||1)*(BODYF[L.body]||BODYF.narrow).k,'--f-text':(BODYF[L.body]||BODYF.narrow).f,'--txv':(BODYF[L.body]||BODYF.narrow).v,...(L.ribsz==='big'?{'--rw':'54px','--rl':'6px','--rvf':'32px','--rvi':'30px','--rwf':'19px','--rww':'500','--rls':'.06em','--rwp':'14px 0 12px','--rmax':'148px'}:{'--rw':'42px','--rl':'8px','--rvf':'23px','--rvi':'24px','--rwf':'15px','--rww':'400','--rls':'.03em','--rwp':'12px 0 8px','--rmax':'150px'}),...(L.valsh==='point'?{'--vclip':'polygon(0 0,100% 0,100% calc(100% - 11px),50% 100%,0 calc(100% - 11px))','--vpad':'11px'}:{'--vclip':'none','--vpad':'0px'})};
  for(const k in v)el.style.setProperty(k,v[k]);
 }
 
@@ -3392,6 +3392,7 @@ function renderSide(){
    ${F.sel('Шрифт текста карт','look.body',L.body||'narrow',opts(BODYF))}
    <div class="row">${F.sel('Текстура рамки','look.tex',L.tex,opts(TEX))}${F.sel('Форма ленты','look.rib',L.rib,opts(RIB))}</div>
    <div class="row">${F.sel('Углы карт','look.radius',L.radius,[['round','Скруглённые'],['square','Прямые']])}${F.sel('Размер ленты','look.ribsz',L.ribsz||'normal',[['normal','Обычная'],['big','Крупная, как в Unmatched']])}</div>
+   ${F.sel('Низ плашки с цифрой','look.valsh',L.valsh||'flat',[['flat','Прямой'],['point','Уголком вниз, как в Unmatched']])}
    ${F.color('Рамка карт действий','look.border',L.border)}${F.color('Рамка персонажа и правил','look.char',L.char)}${F.color('Цвет панелей','look.panel',L.panel)}${F.color('Плашка с текстом карт','look.ink',L.ink)}
    <p class="hint">Цвет текста на плашке подбирается сам: светлая плашка — тёмный текст.</p></div>`}
  if(section==='print'){const o=popt(),c=sheetCount(),tot=c.fronts+c.backs+c.extras+c.tokens;
