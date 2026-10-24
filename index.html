@@ -2834,6 +2834,7 @@ code.sel{user-select:all;background:var(--panel-2);padding:2px 5px;border-radius
 .hcard{width:189px;height:264px;flex:none}.hcard>.card{transform:scale(.75);transform-origin:0 0}
 @media (max-width:820px){.bstats{grid-template-columns:repeat(2,minmax(0,1fr))}.hgrid{grid-template-columns:1fr}}
 .artimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;max-width:none}
+.artimg.artbg{filter:blur(12px) brightness(.55);transform:scale(1.15)}
 .art .ribbon{z-index:1}.cover .lab{z-index:2}
 .gback{position:absolute;inset:0;background-color:var(--g1);display:grid;place-items:center;overflow:hidden}
 .gb-rays{background-image:repeating-conic-gradient(from 0deg at 50% 46%,var(--g1) 0 9deg,var(--g2) 9deg 18deg)}
@@ -3333,7 +3334,7 @@ const F={
 const ATK=[['melee','Ближняя'],['ranged','Дальняя']];
 function cropFields(p,o,tok){if(!o.image)return'';o.crop=Object.assign({x:50,y:50,z:1},o.crop||{});const c=o.crop;
  if(tok)return `<div class="cropbox"><p class="hint" style="margin:0">Кадр в круге: уменьши масштаб или нажми «Вписать целиком», чтобы картинка поместилась.</p><div class="form" style="gap:6px">${F.range('Масштаб',p+'crop.z',c.z,0.4,3,0.05,v=>Math.round(v*100)+'%')}${F.range('← →',p+'crop.x',c.x,0,100,1,v=>v+'%')}${F.range('↑ ↓',p+'crop.y',c.y,0,100,1,v=>v+'%')}</div><div class="btns"><button class="btn sm" data-fit="${p}crop">${c.fit?'Заполнить круг':'Вписать целиком'}</button><button class="btn sm" data-crop-reset="${p}crop">Сбросить кадр</button></div></div>`;
- return `<div class="cropbox"><p class="hint" style="margin:0">Кадр арта: подвинь картинку, чтобы главное не уходило под ленту.</p><div class="form" style="gap:6px">${F.range('Масштаб',p+'crop.z',c.z,1,3,0.05,v=>Math.round(v*100)+'%')}${F.range('← →',p+'crop.x',c.x,0,100,1,v=>v+'%')}${F.range('↑ ↓',p+'crop.y',c.y,0,100,1,v=>v+'%')}</div><button class="btn sm" data-crop-reset="${p}crop">Сбросить кадр</button></div>`}
+ return `<div class="cropbox"><p class="hint" style="margin:0">${c.fit?'Картинка вписана целиком, края заполнены размытым фоном. «Заполнить рамку» — обрезать по краям.':'Кадр арта: подвинь картинку, чтобы главное не уходило под ленту. Не помещается — нажми «Вписать целиком».'}</p><div class="form" style="gap:6px">${F.range('Масштаб',p+'crop.z',c.z,c.fit?0.4:1,3,0.05,v=>Math.round(v*100)+'%')}${F.range('← →',p+'crop.x',c.x,0,100,1,v=>v+'%')}${F.range('↑ ↓',p+'crop.y',c.y,0,100,1,v=>v+'%')}</div><div class="btns"><button class="btn sm" data-fit="${p}crop">${c.fit?'Заполнить рамку':'Вписать целиком'}</button><button class="btn sm" data-crop-reset="${p}crop">Сбросить кадр</button></div></div>`}
 const boldHint='<p class="hint">**текст** — жирный, Enter — новая строка.</p>';
 
 function itemList(key,label,mk,form,sum){
@@ -3471,14 +3472,14 @@ document.addEventListener('change',async e=>{
  if(t.dataset.cvlab!==undefined){deck.cover.hideLabel=!t.checked;save();return renderBench()}
  if(t.dataset.rerender!==undefined){const det=t.closest('details');if(det)openItem=det.id.slice(3).replace('-',':');renderSide()}
  if(t.id==='deckpick'){deck=store.decks[t.value];store.current=deck.id;save();render()}
- if(t.dataset.img){const f=t.files[0];if(!f)return;try{setP(t.dataset.img,await resizeImage(f));const det=t.closest('details');if(det)openItem=det.id.slice(3).replace('-',':');save();render()}catch(err){toast('Не удалось прочитать картинку')}}
+ if(t.dataset.img){const f=t.files[0];if(!f)return;try{const src=await resizeImage(f),p=t.dataset.img;setP(p,src);if(/\.image$/.test(p)){const o=getP(p.slice(0,-6));if(o&&typeof o==='object')o.crop=await autoCrop(p,src)}const det=t.closest('details');if(det)openItem=det.id.slice(3).replace('-',':');save();render()}catch(err){toast('Не удалось прочитать картинку')}}
  if(t.id==='importfile'){const f=t.files[0];if(f){$('#importtext').value=await f.text()}}
 });
 document.addEventListener('click',async e=>{
  const t=e.target.closest('button,a[data-sec],[data-edit],details summary');if(!t)return;
  if(t.matches('[data-png]')){e.stopPropagation();return exportPng(t)}
  if(t.dataset.prompt){const [k,i]=t.dataset.prompt.split(':');return promptModal(k==='card'?mjPrompt('card',deck.actions[+i]):mjPrompt(k),k==='card'?'Промпт: '+esc(deck.actions[+i].title):'Промпт для рубашки')}
- if(t.dataset.fit){const c=getP(t.dataset.fit)||{};c.fit=!c.fit;if(c.fit){c.z=1;c.x=50;c.y=50}setP(t.dataset.fit,c);const det=t.closest('details');if(det)openItem=det.id.slice(3).replace('-',':');save();return render()}
+ if(t.dataset.fit){const c=getP(t.dataset.fit)||{};c.fit=!c.fit;if(c.fit){c.z=1;c.x=50;c.y=50}else if(c.z<1&&!/^tokens\./.test(t.dataset.fit))c.z=1;setP(t.dataset.fit,c);const det=t.closest('details');if(det)openItem=det.id.slice(3).replace('-',':');save();return render()}
  if(t.dataset.cropReset){setP(t.dataset.cropReset,{x:50,y:50,z:1});const det=t.closest('details');if(det)openItem=det.id.slice(3).replace('-',':');save();return render()}
  if(t.dataset.share)return shareDeck(t.dataset.share);
  if(t.dataset.restore!==undefined)return restoreVersion(+t.dataset.restore);
@@ -3537,7 +3538,9 @@ $('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()})
 
 // ---------- art: crop, generated back, Midjourney prompts ----------
 function cropOf(o){const c=o&&o.crop||{};return{x:c.x??50,y:c.y??50,z:c.z??1}}
-function artImg(src,crop){const c=cropOf({crop}),fit=crop&&crop.fit?'contain':'cover';return `<img class="artimg" alt="" src="${src}" style="object-fit:${fit};object-position:${c.x}% ${c.y}%;transform:scale(${c.z});transform-origin:${c.x}% ${c.y}%">`}
+function artImg(src,crop){const c=cropOf({crop}),fit=crop&&crop.fit?'contain':'cover';return `${fit==='contain'?`<img class="artimg artbg" alt="" aria-hidden="true" src="${src}">`:''}<img class="artimg" alt="" src="${src}" style="object-fit:${fit};object-position:${c.x}% ${c.y}%;transform:scale(${c.z});transform-origin:${c.x}% ${c.y}%">`}
+function artBox(p){const m=p.match(/^(\w+)\.(\d+)\.image$/),k=m?m[1]+':'+m[2]:p==='cover.image'?'cover':'';const el=k&&document.querySelector(`#bench [data-edit="${k}"]`);const box=el&&(el.querySelector('.art')||el.querySelector('.inner')||el);return box&&box.clientWidth&&box.clientHeight?box.clientWidth/box.clientHeight:k==='cover'?.72:1.1}
+function autoCrop(p,src){return new Promise(res=>{if(/^tokens\./.test(p))return res({x:50,y:50,z:1});const im=new Image();im.onload=()=>{const r=im.width/im.height/artBox(p);res(r<.88||r>1.14?{x:50,y:50,z:1,fit:true}:{x:50,y:50,z:1})};im.onerror=()=>res({x:50,y:50,z:1});im.src=src})}
 const PATTERNS={rays:'Лучи',diamonds:'Ромбы',rings:'Круги',stars:'Звёзды',plain:'Без узора'};
 function genBack(){const L=Object.assign({},LOOK0,deck.look),p=deck.cover.pattern||'rays',name=(deck.hero&&deck.hero.name)||deck.name||'';
  const mono=name.trim().split(/\s+/).map(w=>w[0]||'').join('').slice(0,2).toUpperCase()||'?';
