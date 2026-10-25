@@ -2868,6 +2868,7 @@ code.sel{user-select:all;background:var(--panel-2);padding:2px 5px;border-radius
 .ribbon .who{width:100%;background:#0b0b0c;color:#fff;font-family:var(--f-title);text-transform:uppercase;font-size:calc(15px*var(--ts));letter-spacing:.03em;writing-mode:vertical-rl;transform:rotate(180deg);text-align:right;padding:12px 0 8px;line-height:42px;clip-path:var(--rib);max-height:150px;overflow:hidden;white-space:nowrap}
 .mark{position:absolute;right:10px;top:10px;width:40px;height:40px;border-radius:50%;background:var(--ink);border:2px solid var(--ink-fg);color:var(--ink-fg);display:grid;place-items:center;z-index:2;box-shadow:0 2px 5px rgba(0,0,0,.5)}
 .mark svg{width:26px;height:26px}
+.mark img{width:30px;height:30px;object-fit:contain;border-radius:50%}
 i.mk{display:inline-block;width:1.05em;height:1.05em;vertical-align:-.17em;font-style:normal}
 i.mk svg{width:100%;height:100%;display:block}
 .boost{position:absolute;right:12px;top:208px;width:28px;height:28px;border-radius:50%;background:var(--ink);border:2px solid var(--ink-fg);color:var(--ink-fg);display:grid;place-items:center;font-family:var(--f-card);font-size:15px;z-index:2}
@@ -3029,9 +3030,26 @@ const ICON={
 const MARK={
  wolf:{n:'Волк',k:'волк',svg:'<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M4 1l4.5 6h7L20 1l.5 7 2 2-3 1.5 1.5 2.5-4 1-2.5 6L12 23l-2.5-2-2.5-6-4-1 1.5-2.5-3-1.5 2-2zM5.6 4.2L7.6 7 5.9 8.2zM18.4 4.2L16.4 7l1.7 1.2zM7.5 10.5l3.3 1.1-2.3 1zM16.5 10.5l-3.3 1.1 2.3 1zM10.6 17.5h2.8L12 19z"/></svg>'},
  bolt:{n:'Молния',k:'молния',svg:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M14 1.5L4.5 13.5h6.2l-1.4 9 10.2-12.6h-6.3z"/></svg>'},
- swirl:{n:'Вихрь',k:'вихрь',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 12.6c.9 0 1.4-.8 1.1-1.6-.4-1.3-2.1-1.6-3.2-.7-1.5 1.3-1.1 3.8.8 4.6 2.6 1.1 5.3-.9 5.3-3.8 0-3.6-3.6-5.9-7-4.8-3.6 1.2-5.4 5.3-3.9 8.9 1.7 4.2 7 5.9 11.1 3.6 2.4-1.3 4-3.8 4.2-6.5"/></svg>'}
+ swirl:{n:'Вихрь',k:'вихрь',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 12.6c.9 0 1.4-.8 1.1-1.6-.4-1.3-2.1-1.6-3.2-.7-1.5 1.3-1.1 3.8.8 4.6 2.6 1.1 5.3-.9 5.3-3.8 0-3.6-3.6-5.9-7-4.8-3.6 1.2-5.4 5.3-3.9 8.9 1.7 4.2 7 5.9 11.1 3.6 2.4-1.3 4-3.8 4.2-6.5"/></svg>'},
+ skull:{n:'Череп',k:'череп',svg:'<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M12 2C7 2 3.5 5.5 3.5 10c0 2.8 1.3 4.7 3 5.8V19c0 .8.7 1.5 1.5 1.5h1v-2h1.5v2h3v-2H15v2h1c.8 0 1.5-.7 1.5-1.5v-3.2c1.7-1.1 3-3 3-5.8C20.5 5.5 17 2 12 2zM8.5 9a2 2 0 110 4 2 2 0 010-4zM15.5 9a2 2 0 110 4 2 2 0 010-4zM12 13.5l1.3 2.5h-2.6z"/></svg>'},
+ heart:{n:'Сердце',k:'сердце',svg:'<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M12 21s-8.5-5.3-8.5-11.2C3.5 6.6 5.8 4.5 8.4 4.5c1.6 0 2.8.8 3.6 2 .8-1.2 2-2 3.6-2 2.6 0 4.9 2.1 4.9 5.3C20.5 15.7 12 21 12 21z"/></svg>'},
+ shield:{n:'Щит',k:'щит',svg:'<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5z"/></svg>'},
+ sword:{n:'Меч',k:'меч',svg:'<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M21.5 2.5l-.6 3.4L11.2 15.6 8.4 12.8 18.1 3.1zM5 12.3l6.7 6.7-1.3 1.3-6.7-6.7zM7.6 16.4l-4.3 4.3 0 0 1 1 4.3-4.3z"/><circle cx="3.4" cy="20.6" r="1.6"/></svg>'},
+ fire:{n:'Огонь',k:'огонь',svg:'<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M12 2c1 3.5 5.5 5.5 5.5 11 0 3.9-2.6 7-5.5 7s-5.5-3.1-5.5-7c0-2.6 1.3-4.5 2.6-5.6.2 2 1.1 3.1 2.2 3.4C10.7 8.3 10.8 4.6 12 2z"/></svg>'},
+ drop:{n:'Капля',k:'капля',svg:'<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M12 2.5s6.5 7.2 6.5 12a6.5 6.5 0 01-13 0c0-4.8 6.5-12 6.5-12z"/></svg>'},
+ eye:{n:'Глаз',k:'глаз',svg:'<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M12 5C6.5 5 2.5 9.5 1.5 12c1 2.5 5 7 10.5 7s9.5-4.5 10.5-7c-1-2.5-5-7-10.5-7zM12 7.8a4.2 4.2 0 110 8.4 4.2 4.2 0 010-8.4z"/><circle cx="12" cy="12" r="2"/></svg>'},
+ star:{n:'Звезда',k:'звезда',svg:'<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7L12 17.3 5.8 20.9l1.6-7L2 9.2l7.1-.6z"/></svg>'},
+ moon:{n:'Луна',k:'луна',svg:'<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M15.5 2.5A9.5 9.5 0 1021.5 17 7.5 7.5 0 0115.5 2.5z"/></svg>'},
+ sun:{n:'Солнце',k:'солнце',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 1.8v3M12 19.2v3M1.8 12h3M19.2 12h3M4.8 4.8l2.1 2.1M17.1 17.1l2.1 2.1M4.8 19.2l2.1-2.1M17.1 6.9l2.1-2.1"/></svg>'},
+ crown:{n:'Корона',k:'корона',svg:'<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M3 7l4.5 4L12 4l4.5 7L21 7l-1.8 10.5H4.8zM4.8 19h14.4v2H4.8z"/></svg>'},
+ target:{n:'Мишень',k:'мишень',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.6" fill="currentColor"/></svg>'},
+ paw:{n:'Лапа',k:'лапа',svg:'<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M12 12.5c3 0 6 3.6 6 6.2 0 1.6-1.3 2.3-2.7 2.3-1.3 0-2-.7-3.3-.7s-2 .7-3.3.7C7.3 21 6 20.3 6 18.7c0-2.6 3-6.2 6-6.2z"/><ellipse cx="5" cy="10.5" rx="2" ry="2.5"/><ellipse cx="9" cy="5.8" rx="2" ry="2.6"/><ellipse cx="15" cy="5.8" rx="2" ry="2.6"/><ellipse cx="19" cy="10.5" rx="2" ry="2.5"/></svg>'},
+ potion:{n:'Зелье',k:'зелье',svg:'<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M9.5 2h5v1.6h-1V8l5 8.5c.9 1.6-.2 3.5-2 3.5H7.5c-1.8 0-2.9-1.9-2-3.5l5-8.5V3.6h-1z"/></svg>'},
+ snow:{n:'Снежинка',k:'снежинка',svg:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M3.3 7l17.4 10M3.3 17l17.4-10M9.5 3.5L12 6l2.5-2.5M9.5 20.5L12 18l2.5 2.5M3.6 10.2L7 9.3 6.1 5.9M20.4 13.8L17 14.7l.9 3.4M3.6 13.8l3.4.9-.9 3.4M20.4 10.2L17 9.3l.9-3.4"/></svg>'},
+ hourglass:{n:'Песочные часы',k:'часы',svg:'<svg viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd"><path d="M5 2h14v2h-1.5c0 3.5-2 5.6-4 8 2 2.4 4 4.5 4 8H19v2H5v-2h1.5c0-3.5 2-5.6 4-8-2-2.4-4-4.5-4-8H5z"/></svg>'}
 };
-const markInline=s=>s.replace(/\[(волк|молния|вихрь)\]/gi,(m,w)=>{const k=Object.values(MARK).find(x=>x.k===w.toLowerCase());return k?`<i class="mk">${k.svg}</i>`:m});
+const MARK_RE=new RegExp('\\[('+Object.values(MARK).map(x=>x.k).join('|')+')\\]','gi');
+const markInline=s=>s.replace(MARK_RE,(m,w)=>{const k=Object.values(MARK).find(x=>x.k===w.toLowerCase());return k?`<i class="mk">${k.svg}</i>`:m});
 const TYPE={attack:{n:'Атака',c:'#c8242f'},defense:{n:'Защита',c:'#6a4c9c'},versatile:{n:'Универсальная',c:'linear-gradient(135deg,#c8242f 50%,#6a4c9c 50%)',tc:'#94386a'},scheme:{n:'Приём',c:'#d39b1c'}};
 const SWORD='<svg viewBox="0 0 46 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="8"/><circle cx="36" cy="10" r="8"/><path d="M4 10h38M8 7v6"/></svg>';
 const BOW='<svg viewBox="0 0 46 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="8"/><circle cx="36" cy="10" r="8"/><path d="M4 10h36M36 6l5 4-5 4"/></svg>';
@@ -3179,7 +3197,7 @@ function actionCard(a,i){
   <div class="inner">
    <div class="art${a.image?'':' ph'}" ${art}>${a.image?artImg(a.image,a.crop):''}
     <div class="ribbon"><div class="val" style="background:${t.c}">${ICON[a.type]||ICON.attack}${val}</div><div class="who fitv">${esc(a.who||deck.hero.name)}</div></div>
-    ${MARK[a.mark]?`<div class="mark">${MARK[a.mark].svg}</div>`:''}
+    ${a.mark==='custom'&&a.markImg?`<div class="mark"><img src="${a.markImg}" alt=""></div>`:MARK[a.mark]?`<div class="mark">${MARK[a.mark].svg}</div>`:''}
    </div>
    <div class="boost">${esc(a.boost)}</div>
    <div class="body"><div class="title fit">${esc(a.title||'Без названия')}</div><div class="txt fitb">${txt}</div>
@@ -3388,8 +3406,9 @@ function renderSide(){
   const who=[deck.hero.name,...deck.sidekicks.map(s=>s.name)];
   body='<button class="btn sm" data-act="allprompts" style="margin-bottom:10px">✦ Промпты Midjourney для всех карт</button>'+itemList('actions','карта действия',null,(it,i)=>{const p='actions.'+i+'.';return `${F.text('Название',p+'title',it.title)}
    <div class="row">${F.sel('Тип','actions.'+i+'.type',it.type,Object.entries(TYPE).map(([k,v])=>[k,v.n]))}${F.text('Кто играет','actions.'+i+'.who',it.who)}</div>
-   ${F.sel('Значок на карте','actions.'+i+'.mark',it.mark||'',[['','Без значка'],...Object.entries(MARK).map(([k,v])=>[k,v.n])])}
-   <p class="hint">Значок встаёт в правый верхний угол арта. В тексте эффекта можно писать [волк], [молния], [вихрь] — там появится такой же значок.</p>
+   ${F.sel('Значок на карте','actions.'+i+'.mark',it.mark||'',[['','Без значка'],...Object.entries(MARK).map(([k,v])=>[k,v.n]),['custom','Свой значок (загрузить)']])}
+   ${it.mark==='custom'?F.img('Свой значок (лучше PNG с прозрачным фоном)','actions.'+i+'.markImg',it.markImg):''}
+   <p class="hint">Значок встаёт в правый верхний угол арта. В тексте эффекта можно писать название значка в квадратных скобках: ${Object.values(MARK).map(x=>'['+x.k+']').join(', ')}.</p>
    <p class="hint">Персонажи: ${who.map(esc).join(', ')}${who.length>1?' или «Любой»':''}</p>
    <div class="row3">${it.type==='scheme'?'<span></span>':F.num('Значение',p+'value',it.value)}${F.num('Усиление',p+'boost',it.boost)}${F.num('Копий',p+'qty',it.qty)}</div>
    ${F.area('Основной текст',p+'text',it.text)}${F.area('Немедленно',p+'imm',it.imm)}${F.area('Во время боя',p+'dur',it.dur)}${F.area('После боя',p+'aft',it.aft)}${boldHint}${F.img('Арт',p+'image',it.image)}${cropFields(p,it)}
@@ -3409,7 +3428,7 @@ function defaults(key){return{
  sidekicks:{name:'Помощник',attack:'melee',health:3,qty:1},
  tokens:{name:'Жетон',value:'',qty:1,image:''},
  actions:{title:'Новая карта',type:'attack',value:3,boost:2,who:deck.hero.name,qty:3,text:'',imm:'',dur:'',aft:'',image:''}}[key]}
-function resizeImage(file,max=900){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',.86))};im.onerror=rej;im.src=r.result};r.onerror=rej;r.readAsDataURL(file)})}
+function resizeImage(file,max=900,type='image/jpeg'){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height));const c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);res(c.toDataURL(type,.86))};im.onerror=rej;im.src=r.result};r.onerror=rej;r.readAsDataURL(file)})}
 function openEditor(ref){
  const [k,i]=ref.split(':');section=k;openItem=i!=null?ref:null;renderSide();
  if(i!=null){const el=document.getElementById(`it-${k}-${i}`);if(el){el.scrollIntoView({block:'nearest',behavior:'smooth'});el.classList.add('flash');setTimeout(()=>el.classList.remove('flash'),1200)}}
@@ -3440,7 +3459,7 @@ document.addEventListener('change',async e=>{
  const t=e.target;
  if(t.dataset.rerender!==undefined){const det=t.closest('details');if(det)openItem=det.id.slice(3).replace('-',':');renderSide()}
  if(t.id==='deckpick'){deck=store.decks[t.value];store.current=deck.id;save();render()}
- if(t.dataset.img){const f=t.files[0];if(!f)return;try{setP(t.dataset.img,await resizeImage(f));const det=t.closest('details');if(det)openItem=det.id.slice(3).replace('-',':');save();render()}catch(err){toast('Не удалось прочитать картинку')}}
+ if(t.dataset.img){const f=t.files[0];if(!f)return;try{setP(t.dataset.img,/\.markImg$/.test(t.dataset.img)?await resizeImage(f,160,'image/png'):await resizeImage(f));const det=t.closest('details');if(det)openItem=det.id.slice(3).replace('-',':');save();render()}catch(err){toast('Не удалось прочитать картинку')}}
  if(t.id==='importfile'){const f=t.files[0];if(f){$('#importtext').value=await f.text()}}
 });
 document.addEventListener('click',async e=>{
