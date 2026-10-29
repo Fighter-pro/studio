@@ -3887,10 +3887,10 @@ const Cloud=(()=>{
  // ratings: ratings/<id>.json = {"<user>": 1..5}, separate from the deck so anyone can vote without touching it
  const RT='ratings',voter=()=>who()||'владелец';
  const ownShared=d=>(d._by||'')===who(),myVote=d=>(d._votes||{})[voter()]||0;
- async function votes(id){try{const j=JSON.parse(await rawText(`${RT}/${id}.json`));return j&&typeof j==='object'?j:{}}catch(e){if(e.net)throw e;return{}}}
+ async function votes(id,strict){try{const j=JSON.parse(await rawText(`${RT}/${id}.json`));return j&&typeof j==='object'?j:{}}catch(e){if(e.net||strict)throw e;return{}}}
  async function rate(id,n){const sd=(shared||[]).find(x=>x.id===id);if(!sd)return;if(ownShared(sd))return toast('Свою колоду оценить нельзя');
   const me=voter(),path=`${RT}/${id}.json`,undo=myVote(sd)===n;
-  try{for(let i=0;;i++){const sha=await remoteSha(path),v=sha?await votes(id):{};if(undo)delete v[me];else v[me]=n;
+  try{for(let i=0;;i++){const sha=await remoteSha(path),v=sha?await votes(id,true):{};if(undo)delete v[me];else v[me]=n;
     try{await putFile(path,b64utf8(JSON.stringify(v)),sha,(undo?'Убрана оценка':'Оценка '+n+'/5')+' колоды «'+sd.name+'»');sd._votes=v;break}
     catch(e){if(i<3&&(e.status===409||e.status===422)){await new Promise(z=>setTimeout(z,800*(i+1)));continue}throw e}}
    toast(undo?'Оценка убрана':'Спасибо! Твоя оценка: '+n+' ♥')}
