@@ -3438,7 +3438,7 @@ function switchDeck(d){store.decks[d.id]=d;store.current=d.id;deck=d;save();rend
 // ---------- import into an existing deck: new texts and numbers, old photos stay ----------
 let _pendingImport=null;
 const nameKey=s=>String(s||'').trim().toLowerCase().replace(/ё/g,'е').replace(/\s+/g,' ');
-function findSameName(d){const k=nameKey(d.name);return k?Object.values(store.decks).find(x=>nameKey(x.name)===k):null}
+function findSameName(d,pool,used){const k=nameKey(d.name);return k?(pool||Object.values(store.decks)).find(x=>nameKey(x.name)===k&&!(used&&used.has(x.id))):null}
 function fixImported(d){d.look=d.look||blankDeck().look;['rules','sidekicks','tokens','actions'].forEach(k=>d[k]=d[k]||[]);d.cover=d.cover||{image:'',label:d.name};return d}
 // pair new items with old ones: same name first, then same place in the list
 function pairUp(oldL,newL,key){const used=new Set(),pair=newL.map(()=>-1);
@@ -3456,8 +3456,10 @@ function mergeDeck(old,inc){const d=JSON.parse(JSON.stringify(inc)),O=old;
  const kept=d.actions.filter((n,i)=>pa[i]>=0&&n.image&&n.image===O.actions[pa[i]].image).length;
  return{d,kept}}
 async function doImport(mode){const list=_pendingImport||[];_pendingImport=null;let up=0,add=0,photos=0,first=null;
- for(let k=0;k<list.length;k++){const inc=fixImported(list[k]),old=mode==='merge'&&findSameName(inc);
-  if(old){try{await snapshot(old,'Перед импортом')}catch(e){}const r=mergeDeck(old,inc);store.decks[old.id]=r.d;photos+=r.kept;up++;first=first||r.d}
+ // match against decks that existed before this import, each one at most once
+ const pool=Object.values(store.decks),used=new Set();
+ for(let k=0;k<list.length;k++){const inc=fixImported(list[k]),old=mode==='merge'&&findSameName(inc,pool,used);
+  if(old){used.add(old.id);try{await snapshot(old,'Перед импортом')}catch(e){}const r=mergeDeck(old,inc);store.decks[old.id]=r.d;photos+=r.kept;up++;first=first||r.d}
   else{inc.id='d'+Date.now()+k;store.decks[inc.id]=inc;add++;first=first||inc}}
  if(!first)return closeModal();deck=first;store.current=first.id;closeModal();save();render();
  toast(up?`Обновлено колод: ${up}${add?', добавлено новых: '+add:''}. Фото на месте: ${photos}`:(add>1?'Импортировано колод: '+add:'Колода импортирована'))}
@@ -3535,7 +3537,7 @@ document.addEventListener('click',async e=>{
  if(a==='copy'){const ta=$('#exporttext');try{await navigator.clipboard.writeText(ta.value);toast('Скопировано')}catch(err){ta.select();toast('Выделено — нажми Ctrl+C')}return}
  if(a==='import'){modal(`<h2 class="sec">Импорт колоды</h2><p class="hint">Вставь JSON или выбери файл.</p><label class="btn sm" style="align-self:flex-start">Выбрать файл<input type="file" id="importfile" accept=".json,application/json" hidden></label><textarea id="importtext" placeholder='{"name": …}'></textarea><div class="btns"><button class="btn primary" data-act="doimport">Импортировать</button><button class="btn" data-act="close">Отмена</button></div>`);return}
  if(a==='doimport'){let raw;try{raw=JSON.parse($('#importtext').value);if(!raw.allDecks&&(!raw.hero||!raw.actions))throw 0}catch(err){toast('Это не похоже на файл колоды. Проверь, что JSON скопирован целиком.');return}
-  const list=raw.allDecks||[raw],hits=list.map(findSameName).filter(Boolean);_pendingImport=list;
+  const list=raw.allDecks||[raw],hits=list.map(d=>findSameName(d)).filter(Boolean);_pendingImport=list;
   if(!hits.length)return doImport('new');
   const one=list.length===1;
   modal(`<h2 class="sec">Такая колода уже есть</h2><p class="hint">${one?`У тебя уже есть колода «${esc(hits[0].name)}».`:`Совпадают по названию: ${hits.map(d=>'«'+esc(d.name)+'»').join(', ')}.`} Можно обновить её: поменяются тексты и цифры карт, а загруженные фото останутся на своих картах. Старая версия сохранится в истории.</p><div class="btns"><button class="btn primary" data-act="imp-merge">${one?'Обновить колоду, фото оставить':'Обновить совпавшие, фото оставить'}</button><button class="btn" data-act="imp-new">${one?'Добавить как новую':'Добавить все как новые'}</button><button class="btn" data-act="close">Отмена</button></div>`);return}
