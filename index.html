@@ -2797,6 +2797,10 @@ input[type=range]{accent-color:var(--accent);width:100%}
 .dinfo{display:flex;flex-direction:column;gap:3px;min-width:0}
 .dinfo b{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dinfo small{color:var(--muted);font-size:12px}
+.rate{display:flex;align-items:center;gap:2px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.rate button{background:none;border:0;padding:0 1px;font-size:18px;line-height:1;cursor:pointer;color:var(--line);transition:transform .1s}
+.rate button.on{color:#ff4d6d}.rate button:hover{transform:scale(1.2)}.rate button:disabled{cursor:default;transform:none}
+.rate span{margin-left:6px}
 .pill{align-self:flex-start;margin-top:3px;font-size:11px;font-weight:700;color:#1b1206;background:var(--accent);border-radius:20px;padding:2px 8px}
 .dact{display:flex;flex-wrap:wrap;gap:6px}
 .dnew{cursor:pointer;align-items:center;justify-content:center;text-align:center;border-style:dashed;min-height:260px;color:var(--fg)}
@@ -3280,6 +3284,10 @@ function deckGallery(){
  </div></div>${cloudOn()?sharedGallery():''}`}
 let sharedOpen=false,sharedErr='';
 const cloudOn=()=>Cloud.available()&&Cloud.hasToken();
+function rateBar(d){const v=Object.values(d._votes||{}).filter(x=>x>=1&&x<=5),avg=v.length?v.reduce((a,b)=>a+b,0)/v.length:0,my=Cloud.myVote(d),own=Cloud.ownShared(d);
+ const tip=own?'Свою колоду оценить нельзя':my?'Твоя оценка: '+my+'. Нажми ещё раз, чтобы убрать':'Поставь оценку — без отзыва, просто выбери сердечки';
+ const hearts=[1,2,3,4,5].map(i=>`<button data-act="sh-rate" data-id="${d.id}" data-n="${i}" class="${i<=(own?Math.round(avg):(my||Math.round(avg)))?'on':''}" title="${tip}" ${own?'disabled':''}>♥</button>`).join('');
+ return `<div class="rate">${hearts}<span>${v.length?avg.toFixed(1).replace('.',',')+' · '+v.length+' '+plural(v.length,'оценка','оценки','оценок'):'нет оценок'}${my?' · твоя: '+my:''}</span></div>`}
 function sharedGallery(){
  const L=sharedOpen&&!sharedErr?Cloud.sharedList.cache:null;
  let body;if(!sharedOpen)body=`<p class="hint">Колоды, которые пользователи студии выложили для всех. Возьми себе копию — и меняй её как хочешь.</p><button class="btn" data-act="sh-load">Показать общие колоды</button>`;
@@ -3287,7 +3295,7 @@ function sharedGallery(){
  else if(!L)body=`<p class="hint">Загружаю…</p>`;
  else if(!L.length)body=`<p class="hint">Пока пусто. Нажми «В общие» у своей колоды, чтобы выложить её.</p><button class="btn sm" data-act="sh-load">Обновить</button>`;
  else body=`<div class="decks">${L.map(d=>{const n=(d.actions||[]).reduce((s,a)=>s+(+a.qty||0),0);
-  return `<div class="dcard"><div class="dopen" style="cursor:default">${deckThumb(d)}</div><div class="dinfo"><b>${esc(d.name)}</b><small>${esc((d.hero&&d.hero.name)||'')} · ${n} карт · выложил: ${esc(d._by||'владелец')}</small></div>
+  return `<div class="dcard"><div class="dopen" style="cursor:default">${deckThumb(d)}</div><div class="dinfo"><b>${esc(d.name)}</b><small>${esc((d.hero&&d.hero.name)||'')} · ${n} карт · выложил: ${esc(d._by||'владелец')}</small>${rateBar(d)}</div>
   <div class="dact"><button class="btn sm primary" data-act="sh-take" data-id="${d.id}">Взять себе</button>${Cloud.mine(d)?`<button class="btn sm danger" data-act="sh-del" data-id="${d.id}">Убрать из общих</button>`:''}</div></div>`}).join('')}</div><button class="btn sm" data-act="sh-load" style="margin-top:10px">Обновить</button>`;
  return `<div class="group"><h3>Общие колоды${L&&L.length?' · '+L.length:''}</h3>${body}</div>`}
 function popt(){return deck.printOpt||(deck.printOpt={backs:true,extras:true,tokens:true})}
@@ -3586,6 +3594,7 @@ document.addEventListener('click',async e=>{
  if(a==='sh-load'){sharedOpen=true;sharedErr='';renderBench();try{await Cloud.sharedList(true)}catch(e){sharedErr=e.net?'Нет связи с GitHub':'Не удалось загрузить общие колоды'}return renderBench()}
  if(a==='sh-pub'){await Cloud.publish(store.decks[t.dataset.id]||deck);if(sharedOpen){try{await Cloud.sharedList(true)}catch(e){}renderBench()}return}
  if(a==='sh-take'){const d=Cloud.take(t.dataset.id);if(!d)return;store.decks[d.id]=d;save();renderBench();renderSide();return toast('Колода «'+d.name+'» добавлена в твои колоды')}
+ if(a==='sh-rate'){await Cloud.rate(t.dataset.id,+t.dataset.n);return renderBench()}
  if(a==='sh-del'){if(!confirm('Убрать колоду из общих? У тебя она останется.'))return;await Cloud.unpublish(t.dataset.id);return renderBench()}
  if(a==='savepng'){if(lastPng)saveFile(t.dataset.name,lastPng);return}
  if(a==='dl')return download(JSON.stringify(deck),(deck.name||'колода')+'.json');
@@ -3871,9 +3880,21 @@ const Cloud=(()=>{
  // ---- shared folder: decks published for everyone ----
  const SH='shared';let shared=null;
  async function sharedList(force){if(shared&&!force)return shared;sharedList.cache=null;const files=await tree(),out=[];
-  for(const f of files){const m=/^shared\/([^/]+)\.json$/.exec(f.path);if(!m)continue;try{const c=JSON.parse(await rawText(f.path));c.id=m[1];out.push(await fromRemote(c))}catch(e){if(e.net)throw e}}
+  const rated=new Set(files.map(f=>f.path).filter(x=>x.startsWith(RT+'/')));
+  for(const f of files){const m=/^shared\/([^/]+)\.json$/.exec(f.path);if(!m)continue;try{const c=JSON.parse(await rawText(f.path));c.id=m[1];c._votes=rated.has(`${RT}/${m[1]}.json`)?await votes(m[1]):{};out.push(await fromRemote(c))}catch(e){if(e.net)throw e}}
   out.sort((a,b)=>String(b._at||'').localeCompare(String(a._at||'')));sharedList.cache=out;return shared=out}
  const mine=d=>!who()||(d._by||'')===who();
+ // ratings: ratings/<id>.json = {"<user>": 1..5}, separate from the deck so anyone can vote without touching it
+ const RT='ratings',voter=()=>who()||'владелец';
+ const ownShared=d=>(d._by||'')===who(),myVote=d=>(d._votes||{})[voter()]||0;
+ async function votes(id){try{const j=JSON.parse(await rawText(`${RT}/${id}.json`));return j&&typeof j==='object'?j:{}}catch(e){if(e.net)throw e;return{}}}
+ async function rate(id,n){const sd=(shared||[]).find(x=>x.id===id);if(!sd)return;if(ownShared(sd))return toast('Свою колоду оценить нельзя');
+  const me=voter(),path=`${RT}/${id}.json`,undo=myVote(sd)===n;
+  try{for(let i=0;;i++){const sha=await remoteSha(path),v=sha?await votes(id):{};if(undo)delete v[me];else v[me]=n;
+    try{await putFile(path,b64utf8(JSON.stringify(v)),sha,(undo?'Убрана оценка':'Оценка '+n+'/5')+' колоды «'+sd.name+'»');sd._votes=v;break}
+    catch(e){if(i<3&&(e.status===409||e.status===422)){await new Promise(z=>setTimeout(z,800*(i+1)));continue}throw e}}
+   toast(undo?'Оценка убрана':'Спасибо! Твоя оценка: '+n+' ♥')}
+  catch(e){console.error(e);toast(e.net?'Нет связи с GitHub — попробуй ещё раз':'Не удалось сохранить оценку')}}
  async function publish(d){if(!token())return toast('Сначала подключи облако');
   for(let i=0;st.busy&&i<120;i++)await new Promise(z=>setTimeout(z,500));st.busy=true;set('sync');
   try{const have=new Set((await tree()).map(f=>f.path)),path=`${SH}/${d.id}.json`,cur=have.has(path)?await remoteSha(path):null;
@@ -3886,8 +3907,9 @@ const Cloud=(()=>{
   finally{st.busy=false;if(st.again){st.again=false;setTimeout(run,500)}}}
  async function unpublish(id){const sd=(shared||[]).find(x=>x.id===id);if(sd&&!mine(sd))return toast('Убрать может только тот, кто выложил');
   const path=`${SH}/${id}.json`,cur=await remoteSha(path).catch(()=>null);if(cur){const r=await gh('DELETE',P(path),{message:'Убрана общая колода',sha:cur});if(!r.ok&&r.status!==404)return toast('Не удалось убрать')}
+  const rs=await remoteSha(`${RT}/${id}.json`).catch(()=>null);if(rs)await gh('DELETE',P(`${RT}/${id}.json`),{message:'Убраны оценки колоды',sha:rs}).catch(()=>{});
   shared=(shared||[]).filter(x=>x.id!==id);sharedList.cache=shared;toast('Колода убрана из общих')}
- function take(id){const sd=(shared||[]).find(x=>x.id===id);if(!sd)return;const d=JSON.parse(JSON.stringify(sd));delete d._by;delete d._at;d.id='d'+Date.now();return d}
+ function take(id){const sd=(shared||[]).find(x=>x.id===id);if(!sd)return;const d=JSON.parse(JSON.stringify(sd));delete d._by;delete d._at;delete d._votes;d.id='d'+Date.now();return d}
  // ---- owner: add users ----
  async function addUser(name,pw,pw2,tk){name=String(name||'').trim();tk=String(tk||'').trim()||token();
   if(who())return toast('Добавлять пользователей может только владелец');if(!name)return toast('Впиши имя пользователя');
@@ -3932,7 +3954,7 @@ const Cloud=(()=>{
     <p class="hint">С отдельным ключом пользователя можно отключить в любой момент: удалить его ключ на GitHub. Если оставить пустым, будет использован твой ключ.</p>
     <button class="btn primary" data-act="gh-adduser">Создать строку для config.js</button></div></details>`:''}
    <button class="btn danger" data-act="gh-logout">Отключить это устройство</button></div>`}
- return{available,init,run,schedule,logout,panel,connect,makeLock,addUser,sharedList,publish,unpublish,take,mine,who,hasToken:()=>!!token(),chip,hashDeck,seedSig,sameDeck,gateNeeded,showGate,state:st}
+ return{available,init,run,schedule,logout,panel,connect,makeLock,addUser,sharedList,publish,unpublish,take,mine,rate,myVote,ownShared,who,hasToken:()=>!!token(),chip,hashDeck,seedSig,sameDeck,gateNeeded,showGate,state:st}
 })();
 
 // ---------- files: PDF, PNG, JSON ----------
