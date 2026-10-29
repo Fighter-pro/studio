@@ -3481,6 +3481,34 @@ function openEditor(ref){
  if(innerWidth<=820)$('#side').scrollIntoView({behavior:'smooth'});
 }
 function switchDeck(d){store.decks[d.id]=d;store.current=d.id;deck=d;save();render()}
+// ---------- import into an existing deck: new texts and numbers, old photos stay ----------
+let _pendingImport=null;
+const nameKey=s=>String(s||'').trim().toLowerCase().replace(/ё/g,'е').replace(/\s+/g,' ');
+function findSameName(d,pool,used){const k=nameKey(d.name);return k?(pool||Object.values(store.decks)).find(x=>nameKey(x.name)===k&&!(used&&used.has(x.id))):null}
+function fixImported(d){d.look=d.look||blankDeck().look;['rules','sidekicks','tokens','actions'].forEach(k=>d[k]=d[k]||[]);d.cover=d.cover||{image:'',label:d.name};return d}
+// pair new items with old ones: same name first, then same place in the list
+function pairUp(oldL,newL,key){const used=new Set(),pair=newL.map(()=>-1);
+ newL.forEach((n,i)=>{const k=nameKey(key(n));if(!k)return;const j=oldL.findIndex((o,j)=>!used.has(j)&&nameKey(key(o))===k);if(j>=0){pair[i]=j;used.add(j)}});
+ newL.forEach((n,i)=>{if(pair[i]<0&&i<oldL.length&&!used.has(i)&&(oldL[i].type||'')===(n.type||'')){pair[i]=i;used.add(i)}});
+ return pair}
+function keepPhoto(o,n){if(o&&o.image&&!n.image){n.image=o.image;if(o.crop)n.crop=o.crop}return n}
+function mergeDeck(old,inc){const d=JSON.parse(JSON.stringify(inc)),O=old;
+ const pa=pairUp(O.actions||[],d.actions,x=>x.title);d.actions.forEach((n,i)=>keepPhoto(O.actions[pa[i]],n));
+ const pt=pairUp(O.tokens||[],d.tokens,x=>x.name);d.tokens.forEach((n,i)=>keepPhoto((O.tokens||[])[pt[i]],n));
+ keepPhoto(O.cover,d.cover);
+ ['artDesc','printOpt','author'].forEach(k=>{if(d[k]==null||d[k]==='')if(O[k]!=null)d[k]=O[k]});
+ (d.sidekicks||[]).forEach(s=>{const o=(O.sidekicks||[]).find(x=>nameKey(x.name)===nameKey(s.name));if(o&&o.artDesc&&!s.artDesc)s.artDesc=o.artDesc});
+ d.id=O.id;d.name=O.name;
+ const kept=d.actions.filter((n,i)=>pa[i]>=0&&n.image&&n.image===O.actions[pa[i]].image).length;
+ return{d,kept}}
+async function doImport(mode){const list=_pendingImport||[];_pendingImport=null;let up=0,add=0,photos=0,first=null;
+ // match against decks that existed before this import, each one at most once
+ const pool=Object.values(store.decks),used=new Set();
+ for(let k=0;k<list.length;k++){const inc=fixImported(list[k]),old=mode==='merge'&&findSameName(inc,pool,used);
+  if(old){used.add(old.id);try{await snapshot(old,'Перед импортом')}catch(e){}const r=mergeDeck(old,inc);store.decks[old.id]=r.d;photos+=r.kept;up++;first=first||r.d}
+  else{inc.id='d'+Date.now()+k;store.decks[inc.id]=inc;add++;first=first||inc}}
+ if(!first)return closeModal();deck=first;store.current=first.id;closeModal();save();render();
+ toast(up?`Обновлено колод: ${up}${add?', добавлено новых: '+add:''}. Фото на месте: ${photos}`:(add>1?'Импортировано колод: '+add:'Колода импортирована'))}
 function modal(html){const m=$('#modal');m.innerHTML=`<div class="box">${html}</div>`;m.hidden=false}
 function closeModal(){$('#modal').hidden=true}
 
@@ -3564,9 +3592,13 @@ document.addEventListener('click',async e=>{
  if(a==='dlall')return download(JSON.stringify({allDecks:Object.values(store.decks)}),'все-колоды-'+new Date().toISOString().slice(0,10)+'.json');
  if(a==='copy'){const ta=$('#exporttext');try{await navigator.clipboard.writeText(ta.value);toast('Скопировано')}catch(err){ta.select();toast('Выделено — нажми Ctrl+C')}return}
  if(a==='import'){modal(`<h2 class="sec">Импорт колоды</h2><p class="hint">Вставь JSON или выбери файл.</p><label class="btn sm" style="align-self:flex-start">Выбрать файл<input type="file" id="importfile" accept=".json,application/json" hidden></label><textarea id="importtext" placeholder='{"name": …}'></textarea><div class="btns"><button class="btn primary" data-act="doimport">Импортировать</button><button class="btn" data-act="close">Отмена</button></div>`);return}
- if(a==='doimport'){try{const raw=JSON.parse($('#importtext').value);
-  if(raw.allDecks){raw.allDecks.forEach((d,k)=>{d.id='d'+Date.now()+k;store.decks[d.id]=d});deck=raw.allDecks[0];store.current=deck.id;closeModal();save();render();return toast('Импортировано колод: '+raw.allDecks.length)}
-  const d=raw;if(!d.hero||!d.actions)throw 0;d.id='d'+Date.now();d.look=d.look||blankDeck().look;['rules','sidekicks','tokens'].forEach(k=>d[k]=d[k]||[]);d.cover=d.cover||{image:'',label:d.name};closeModal();switchDeck(d);toast('Колода импортирована')}catch(err){toast('Это не похоже на файл колоды. Проверь, что JSON скопирован целиком.')}return}
+ if(a==='doimport'){let raw;try{raw=JSON.parse($('#importtext').value);if(!raw.allDecks&&(!raw.hero||!raw.actions))throw 0}catch(err){toast('Это не похоже на файл колоды. Проверь, что JSON скопирован целиком.');return}
+  const list=raw.allDecks||[raw],hits=list.map(d=>findSameName(d)).filter(Boolean);_pendingImport=list;
+  if(!hits.length)return doImport('new');
+  const one=list.length===1;
+  modal(`<h2 class="sec">Такая колода уже есть</h2><p class="hint">${one?`У тебя уже есть колода «${esc(hits[0].name)}».`:`Совпадают по названию: ${hits.map(d=>'«'+esc(d.name)+'»').join(', ')}.`} Можно обновить её: поменяются тексты и цифры карт, а загруженные фото останутся на своих картах. Старая версия сохранится в истории.</p><div class="btns"><button class="btn primary" data-act="imp-merge">${one?'Обновить колоду, фото оставить':'Обновить совпавшие, фото оставить'}</button><button class="btn" data-act="imp-new">${one?'Добавить как новую':'Добавить все как новые'}</button><button class="btn" data-act="close">Отмена</button></div>`);return}
+ if(a==='imp-merge')return doImport('merge');
+ if(a==='imp-new')return doImport('new');
  if(a==='close')return closeModal();
 });
 $('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
