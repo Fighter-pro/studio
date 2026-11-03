@@ -2905,6 +2905,14 @@ i.mk svg{width:100%;height:100%;display:block}
 .action .title{font-family:var(--f-title);text-transform:uppercase;font-size:calc(16.5px*var(--ts));letter-spacing:.02em;line-height:1.1;padding-bottom:6px;border-bottom:1px solid var(--ink-fg);margin-right:24px}
 .action .txt{font-family:var(--f-text);font-variant:var(--txv,normal);font-size:calc(12.5px*var(--tx));line-height:1.17;margin-top:6px;flex:1;overflow:hidden}
 .action .txt b{font-weight:700}
+.action .bonus{display:flex;align-items:center;gap:7px;margin:6px -14px -8px;padding:0 10px 0 0;min-height:26px;background:rgba(255,255,255,.13);flex-shrink:0}
+.action .bonus .bv{align-self:stretch;display:flex;align-items:center;gap:3px;padding:0 13px 0 9px;background:#c8242f;color:#fff;font-family:var(--f-card);font-size:17px;line-height:1;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,0 100%)}
+.action .bonus .bv svg{width:15px;height:15px}
+.action .bonus .bn{flex:1;min-width:0;font-family:var(--f-title);text-transform:uppercase;font-size:calc(14px*var(--ts));letter-spacing:.02em;white-space:nowrap;overflow:hidden;color:var(--ink-fg)}
+.action .bonus .cf{align-self:center}
+.bref{white-space:nowrap;font-weight:700;text-transform:uppercase}
+.bref i{display:inline-flex;align-items:center;justify-content:center;width:1.5em;height:1em;margin:0 .25em 0 .05em;vertical-align:-.12em;background:#c8242f;clip-path:polygon(0 0,75% 0,100% 50%,75% 100%,0 100%)}
+.bref i svg{width:.8em;height:.8em;margin-right:.2em}
 .action .cf{font-family:var(--f-card);font-size:8px;letter-spacing:.06em;text-transform:uppercase;align-self:flex-end;color:var(--ink-fg);opacity:.8}
 .action .cf i{font-style:normal;border-left:1px solid var(--ink-fg);margin-left:4px;padding-left:4px}
 
@@ -3080,6 +3088,10 @@ const MARK={
 const MARK_RE=new RegExp('\\[('+Object.values(MARK).map(x=>x.k).join('|')+')\\]','gi');
 const markInline=s=>s.replace(MARK_RE,(m,w)=>{const k=Object.values(MARK).find(x=>x.k===w.toLowerCase());return k?`<i class="mk">${k.svg}</i>`:m});
 const TYPE={attack:{n:'Атака',c:'#c8242f'},defense:{n:'Защита',c:'#2a6fc0'},versatile:{n:'Универсальная',c:'#7b4aa8',tc:'#7b4aa8'},scheme:{n:'Приём',c:'#d39b1c'}};
+const isDbl=a=>!!a&&a.dbl==='2'&&(a.type==='attack'||a.type==='versatile');
+const v2Of=a=>(a.value2===''||a.value2==null)?a.value:a.value2;
+const tagVal=a=>a.type==='scheme'?'⚡':isDbl(a)?esc(a.value)+'+'+esc(v2Of(a)):esc(a.value);
+const bonusRef=a=>`<span class="bref"><i>${ICON.attack}</i>${esc(a.bonusTxt||a.bonusName||'Бонусная атака')}</span>`;
 const SWORD='<svg viewBox="0 0 46 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="8"/><circle cx="36" cy="10" r="8"/><path d="M4 10h38M8 7v6"/></svg>';
 const BOW='<svg viewBox="0 0 46 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="8"/><circle cx="36" cy="10" r="8"/><path d="M4 10h36M36 6l5 4-5 4"/></svg>';
 
@@ -3223,6 +3235,7 @@ function actionCard(a,i){
  if(a.imm)txt+=`<div><b>НЕМЕДЛЕННО:</b> ${rich(a.imm)}</div>`;
  if(a.dur)txt+=`<div><b>ВО ВРЕМЯ БОЯ:</b> ${rich(a.dur)}</div>`;
  if(a.aft)txt+=`<div><b>ПОСЛЕ БОЯ:</b> ${rich(a.aft)}</div>`;
+ if(isDbl(a))txt=txt.replace(/\[(бонус|bonus)\]/gi,()=>bonusRef(a));
  const art=a.image?'':`style="background:radial-gradient(circle at 70% 30%,${t.tc||t.c}55,transparent 60%),linear-gradient(160deg,#2a2d33,#0f1012)"`;
  const val=a.type==='scheme'?'':`<span>${esc(a.value)}</span>`;
  return `<div class="card action${a.image&&a.crop&&a.crop.full?' full':''}" data-edit="actions:${i}">
@@ -3233,7 +3246,7 @@ function actionCard(a,i){
    </div>
    <div class="boost">${esc(a.boost)}</div>
    <div class="body"><div class="title fit">${esc(a.title||'Без названия')}</div><div class="txt fitb">${txt}</div>
-   <div class="cf">${esc(deck.hero.name)}<i>x${esc(a.qty)}</i></div></div>
+   ${isDbl(a)?`<div class="bonus"><div class="bv">${ICON.attack}<span>${esc(v2Of(a))}</span></div><div class="bn fit">${esc(a.bonusName||'Бонусная атака')}</div><div class="cf">${esc(deck.hero.name)}<i>x${esc(a.qty)}</i></div></div>`:`<div class="cf">${esc(deck.hero.name)}<i>x${esc(a.qty)}</i></div>`}</div>
   </div></div>`}
 
 function attackBand(kind){return `<div class="atk ${kind}">${kind==='ranged'?'Дальняя':'Ближняя'} ${kind==='ranged'?BOW:SWORD}</div>`}
@@ -3465,9 +3478,10 @@ function renderSide(){
    <p class="hint">Значок встаёт в правый верхний угол арта. В тексте эффекта можно писать название значка в квадратных скобках: ${Object.values(MARK).map(x=>'['+x.k+']').join(', ')}.</p>
    <p class="hint">Персонажи: ${who.map(esc).join(', ')}${who.length>1?' или «Любой»':''}</p>
    <div class="row3">${it.type==='scheme'?'<span></span>':F.num('Значение',p+'value',it.value)}${F.num('Усиление',p+'boost',it.boost)}${F.num('Копий',p+'qty',it.qty)}</div>
+   ${it.type==='attack'||it.type==='versatile'?`${F.sel('Бонусная атака',p+'dbl',it.dbl||'',[['','Нет'],['2','Есть']])}${isDbl(it)?`<div class="row">${F.text('Надпись на плашке',p+'bonusName',it.bonusName||'')}${F.num('Её значение',p+'value2',it.value2??'').replace('<input ','<input placeholder="'+esc(it.value)+'" ')}</div>${F.text('Надпись в тексте карты (на месте [бонус])',p+'bonusTxt',it.bonusTxt||'').replace('<input ','<input placeholder="'+esc(it.bonusName||'как на плашке')+'" ')}<p class="hint">Внизу карты появится плашка со значком атаки, значением и надписью. В тексте «После боя» напиши <b>[бонус]</b>, и там встанет значок со второй надписью, например: «Если противник сыграл защиту, [бонус].» Если вторая надпись пустая, берётся надпись с плашки. Пустое значение = как у основной атаки.</p>`:''}`:''}
    ${F.area('Основной текст',p+'text',it.text)}${F.area('Немедленно',p+'imm',it.imm)}${F.area('Во время боя',p+'dur',it.dur)}${F.area('После боя',p+'aft',it.aft)}${boldHint}${F.img('Арт',p+'image',it.image)}${cropFields(p,it)}
    ${F.text('Сцена для арта (по-английски, необязательно)',p+'scene',it.scene||'')}<button class="btn sm" data-prompt="card:${i}">✦ Промпт для Midjourney</button>`},
-   it=>{const t=TYPE[it.type]||TYPE.attack;return `<span class="tag" style="background:${t.tc||t.c}">${it.type==='scheme'?'⚡':esc(it.value)}</span>${esc(it.title)}<span class="q">×${it.qty}</span>`});
+   it=>{const t=TYPE[it.type]||TYPE.attack;return `<span class="tag" style="background:${t.tc||t.c}">${tagVal(it)}</span>${esc(it.title)}<span class="q">×${it.qty}</span>`});
  }
  s.innerHTML=`<button class="back" data-sec="">‹ Все разделы</button><h2 class="sec">${title}</h2>${body}`;
 }
@@ -3530,9 +3544,9 @@ document.addEventListener('input',e=>{
  {const o=document.querySelector(`[data-rv="${p}"]`);if(o)o.textContent=/crop\.z$/.test(p)?Math.round(v*100)+'%':/crop\./.test(p)?v+'%':v}
  if(p==='look.txt'){const o=document.getElementById('txv');if(o)o.textContent=Math.round(v*100)+'%'}
  save();renderBench();
- if(p==='name'||p.endsWith('.title')||p.endsWith('.name')||p.endsWith('.qty')||p.endsWith('.value')){/* refresh summaries without losing focus */
+ if(p==='name'||p.endsWith('.title')||p.endsWith('.name')||p.endsWith('.qty')||p.endsWith('.value')||p.endsWith('.value2')||p.endsWith('.bonusName')||p.endsWith('.bonusTxt')){/* refresh summaries without losing focus */
   const det=e.target.closest('details');if(det){const key=det.id.split('-')[1],i=+det.id.split('-')[2];const it=deck[key][i];const sm=det.querySelector('summary');
-   if(key==='actions'){const t=TYPE[it.type]||TYPE.attack;sm.innerHTML=`<span class="tag" style="background:${t.tc||t.c}">${it.type==='scheme'?'⚡':esc(it.value)}</span>${esc(it.title)}<span class="q">×${it.qty}</span>`}
+   if(key==='actions'){const t=TYPE[it.type]||TYPE.attack;sm.innerHTML=`<span class="tag" style="background:${t.tc||t.c}">${tagVal(it)}</span>${esc(it.title)}<span class="q">×${it.qty}</span>`}
    else if(key==='rules')sm.textContent=it.title;
    else if(key==='sidekicks')sm.innerHTML=`${esc(it.name)}<span class="q">${it.health} ОЗ ×${it.qty}</span>`;
    else sm.innerHTML=`${esc(it.name)}<span class="q">×${it.qty}</span>`}}
