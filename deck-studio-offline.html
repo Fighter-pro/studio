@@ -3062,7 +3062,7 @@ const TYPE={attack:{n:'Атака',c:'#c8242f'},defense:{n:'Защита',c:'#6a
 const isDbl=a=>!!a&&a.dbl==='2'&&(a.type==='attack'||a.type==='versatile');
 const v2Of=a=>(a.value2===''||a.value2==null)?a.value:a.value2;
 const tagVal=a=>a.type==='scheme'?'⚡':isDbl(a)?esc(a.value)+'+'+esc(v2Of(a)):esc(a.value);
-const bonusRef=a=>`<span class="bref"><i>${ICON.attack}</i>${esc(a.bonusName||'Бонусная атака')}</span>`;
+const bonusRef=a=>`<span class="bref"><i>${ICON.attack}</i>${esc(a.bonusTxt||a.bonusName||'Бонусная атака')}</span>`;
 const SWORD='<svg viewBox="0 0 46 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="8"/><circle cx="36" cy="10" r="8"/><path d="M4 10h38M8 7v6"/></svg>';
 const BOW='<svg viewBox="0 0 46 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="8"/><circle cx="36" cy="10" r="8"/><path d="M4 10h36M36 6l5 4-5 4"/></svg>';
 
@@ -3424,7 +3424,7 @@ function renderSide(){
    <p class="hint">Значок встаёт в правый верхний угол арта. В тексте эффекта можно писать название значка в квадратных скобках: ${Object.values(MARK).map(x=>'['+x.k+']').join(', ')}.</p>
    <p class="hint">Персонажи: ${who.map(esc).join(', ')}${who.length>1?' или «Любой»':''}</p>
    <div class="row3">${it.type==='scheme'?'<span></span>':F.num('Значение',p+'value',it.value)}${F.num('Усиление',p+'boost',it.boost)}${F.num('Копий',p+'qty',it.qty)}</div>
-   ${it.type==='attack'||it.type==='versatile'?`${F.sel('Бонусная атака',p+'dbl',it.dbl||'',[['','Нет'],['2','Есть']])}${isDbl(it)?`<div class="row">${F.text('Её название',p+'bonusName',it.bonusName||'')}${F.num('Её значение',p+'value2',it.value2??'').replace('<input ','<input placeholder="'+esc(it.value)+'" ')}</div><p class="hint">Внизу карты появится плашка со значком атаки, значением и названием. В тексте «После боя» напиши <b>[бонус]</b>, и там встанет значок с названием, например: «Если противник сыграл защиту, [бонус].» Пустое значение = как у основной атаки.</p>`:''}`:''}
+   ${it.type==='attack'||it.type==='versatile'?`${F.sel('Бонусная атака',p+'dbl',it.dbl||'',[['','Нет'],['2','Есть']])}${isDbl(it)?`<div class="row">${F.text('Надпись на плашке',p+'bonusName',it.bonusName||'')}${F.num('Её значение',p+'value2',it.value2??'').replace('<input ','<input placeholder="'+esc(it.value)+'" ')}</div>${F.text('Надпись в тексте карты (на месте [бонус])',p+'bonusTxt',it.bonusTxt||'').replace('<input ','<input placeholder="'+esc(it.bonusName||'как на плашке')+'" ')}<p class="hint">Внизу карты появится плашка со значком атаки, значением и надписью. В тексте «После боя» напиши <b>[бонус]</b>, и там встанет значок со второй надписью, например: «Если противник сыграл защиту, [бонус].» Если вторая надпись пустая, берётся надпись с плашки. Пустое значение = как у основной атаки.</p>`:''}`:''}
    ${F.area('Основной текст',p+'text',it.text)}${F.area('Немедленно',p+'imm',it.imm)}${F.area('Во время боя',p+'dur',it.dur)}${F.area('После боя',p+'aft',it.aft)}${boldHint}${F.img('Арт',p+'image',it.image)}${cropFields(p,it)}
    ${F.text('Сцена для арта (по-английски, необязательно)',p+'scene',it.scene||'')}<button class="btn sm" data-prompt="card:${i}">✦ Промпт для Midjourney</button>`},
    it=>{const t=TYPE[it.type]||TYPE.attack;return `<span class="tag" style="background:${t.tc||t.c}">${tagVal(it)}</span>${esc(it.title)}<span class="q">×${it.qty}</span>`});
@@ -3490,7 +3490,7 @@ document.addEventListener('input',e=>{
  {const o=document.querySelector(`[data-rv="${p}"]`);if(o)o.textContent=/crop\.z$/.test(p)?Math.round(v*100)+'%':/crop\./.test(p)?v+'%':v}
  if(p==='look.txt'){const o=document.getElementById('txv');if(o)o.textContent=Math.round(v*100)+'%'}
  save();renderBench();
- if(p==='name'||p.endsWith('.title')||p.endsWith('.name')||p.endsWith('.qty')||p.endsWith('.value')||p.endsWith('.value2')||p.endsWith('.bonusName')){/* refresh summaries without losing focus */
+ if(p==='name'||p.endsWith('.title')||p.endsWith('.name')||p.endsWith('.qty')||p.endsWith('.value')||p.endsWith('.value2')||p.endsWith('.bonusName')||p.endsWith('.bonusTxt')){/* refresh summaries without losing focus */
   const det=e.target.closest('details');if(det){const key=det.id.split('-')[1],i=+det.id.split('-')[2];const it=deck[key][i];const sm=det.querySelector('summary');
    if(key==='actions'){const t=TYPE[it.type]||TYPE.attack;sm.innerHTML=`<span class="tag" style="background:${t.tc||t.c}">${tagVal(it)}</span>${esc(it.title)}<span class="q">×${it.qty}</span>`}
    else if(key==='rules')sm.textContent=it.title;
